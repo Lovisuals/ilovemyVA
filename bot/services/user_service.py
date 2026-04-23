@@ -1,9 +1,6 @@
-"bot/services/user_service.py"
-
 from typing import List, Tuple, Optional
-from sqlalchemy import select, func
+from sqlalchemy import select, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from bot.models.bot_user import BotUser, UserRole
 
 class UserService:
@@ -14,64 +11,27 @@ class UserService:
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def get_page(session: AsyncSession, page: int, per_page: int) -> Tuple[List[BotUser], int]:
-        stmt_count = select(func.count()).select_from(BotUser)
-        count_result = await session.execute(stmt_count)
-        total_count = count_result.scalar() or 0
-
-        offset = (page - 1) * per_page
-        stmt = select(BotUser).order_by(BotUser.joined_at.desc().nulls_last()).offset(offset).limit(per_page)
+    async def get_page(session: AsyncSession, page: int, size: int) -> Tuple[List[BotUser], int]:
+        total_stmt = select(func.count()).select_from(BotUser)
+        total = await session.scalar(total_stmt)
+        stmt = select(BotUser).offset((page - 1) * size).limit(size).order_by(BotUser.joined_at.desc())
         result = await session.execute(stmt)
-        return list(result.scalars().all()), total_count
+        return list(result.scalars().all()), total
 
     @staticmethod
-    async def promote(session: AsyncSession, user_id: int, actor_id: int) -> BotUser:
-        user = await UserService.get_by_id(session, user_id)
-        if not user:
-            raise ValueError("User not found")
-        if user.role != UserRole.USER:
-            raise ValueError("Only regular users can be promoted")
-
-        user.role = UserRole.ADMIN
-        user.promoted_by = actor_id
-        try:
-            await session.commit()
-            await session.refresh(user)
-            return user
-        except Exception:
-            await session.rollback()
-            raise
+    async def promote(session: AsyncSession, user_id: int, actor_id: int):
+        stmt = update(BotUser).where(BotUser.id == user_id).values(role=UserRole.ADMIN, promoted_by=actor_id)
+        await session.execute(stmt)
+        await session.commit()
 
     @staticmethod
-    async def demote(session: AsyncSession, user_id: int) -> BotUser:
-        user = await UserService.get_by_id(session, user_id)
-        if not user:
-            raise ValueError("User not found")
-        if user.role == UserRole.SUPERADMIN:
-            raise ValueError("Cannot demote superadmin")
-
-        user.role = UserRole.USER
-        try:
-            await session.commit()
-            await session.refresh(user)
-            return user
-        except Exception:
-            await session.rollback()
-            raise
+    async def demote(session: AsyncSession, user_id: int):
+        stmt = update(BotUser).where(BotUser.id == user_id).values(role=UserRole.USER)
+        await session.execute(stmt)
+        await session.commit()
 
     @staticmethod
-    async def deactivate(session: AsyncSession, user_id: int) -> BotUser:
-        user = await UserService.get_by_id(session, user_id)
-        if not user:
-            raise ValueError("User not found")
-        if user.role == UserRole.SUPERADMIN:
-            raise ValueError("Cannot deactivate superadmin")
-
-        user.is_active = False
-        try:
-            await session.commit()
-            await session.refresh(user)
-            return user
-        except Exception:
-            await session.rollback()
-            raise
+    async def deactivate(session: AsyncSession, user_id: int):
+        stmt = update(BotUser).where(BotUser.id == user_id).values(is_active=False)
+        await session.execute(stmt)
+        await session.commit()

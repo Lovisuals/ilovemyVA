@@ -1,60 +1,22 @@
-"bot/scheduler/jobs.py"
-
-import uuid
-import asyncio
-from datetime import datetime, timezone
+import logging
 from aiogram import Bot
-from bot.config import settings
-from bot.models.content_item import ContentItem, ContentBucket
-from bot.services.bucket_service import BucketService
-from bot.services.broadcast_service import BroadcastService
-from bot.strings import MEDICAL_DISCLAIMER, PUBLISH_FAILED_MAX_RETRIES
+from sqlalchemy import select
 from database.session import async_session
+from bot.models.content_item import ContentItem, ContentBucket
 
-async def publish_job(item_id: uuid.UUID):
-    bot = Bot(token=settings.bot.token)
-
+async def publish_content_job(item_id: str, bot: Bot):
     async with async_session() as session:
-        item = await BucketService.get_by_id(session, item_id)
-        if not item or item.bucket != ContentBucket.SCHEDULED:
-            await bot.session.close()
+        stmt = select(ContentItem).where(ContentItem.id == item_id)
+        result = await session.execute(stmt)
+        item = result.scalar_one_or_none()
+        if not item:
             return
-
-        # Disclaimer
-        if not item.disclaimer_appended:
-            item.text = (item.text or "") + f"\n\n{MEDICAL_DISCLAIMER}"
-            item.disclaimer_appended = True
-            try:
-                await session.commit()
-            except Exception:
-                await session.rollback()
-                raise
-
-        # Target Channel Delivery
-        target_chat_id = settings.bot.main_channel_id
-
-        success = False
-        for attempt in range(3):
-            try:
-                await BroadcastService.send(bot, session, item, target_chat_id, "Main Delivery")
-                success = True
-                break
-            except Exception:
-                await asyncio.sleep(60 * (attempt + 1))
-
-        if success:
-            item.bucket = ContentBucket.PUBLISHED
-            item.published_at = datetime.now(timezone.utc)
-        else:
-            await bot.send_message(
-                settings.bot.owner_id,
-                PUBLISH_FAILED_MAX_RETRIES.format(id=str(item.id))
-            )
-
         try:
+            await bot.send_message(
+                chat_id=item.created_by,
+                text=f"🚀 **Scheduled Post Publishing:**\n\n{item.text}"
+            )
+            item.bucket = ContentBucket.PUBLISHED
             await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-
-    await bot.session.close()
+        except Exception as e:
+            logging.error(f"Failed to publish {item_id}: {e}")

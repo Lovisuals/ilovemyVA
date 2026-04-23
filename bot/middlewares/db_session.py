@@ -1,5 +1,3 @@
-"bot/middlewares/db_session.py"
-
 from typing import Any, Awaitable, Callable, Dict
 from aiogram import BaseMiddleware
 from aiogram.types import Update

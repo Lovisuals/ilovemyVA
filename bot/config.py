@@ -2,7 +2,6 @@
 
 import os
 from typing import List, Optional
-
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 

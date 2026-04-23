@@ -1,30 +1,19 @@
-"bot/keyboards/item_actions_kb.py"
-
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from bot.callbacks import ContentItemAction
+from bot.models.content_item import ContentBucket
 
-from bot.callbacks import (
-    ItemEdit, ItemPreview, ItemSchedule,
-    ItemBroadcast, ItemArchive, ItemDelete,
-    BucketSelect
-)
-
-def build_item_actions(item_id: str, bucket: str) -> InlineKeyboardMarkup:
+def build_item_actions(item_id: str, bucket: ContentBucket) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-
-    # Row 1
-    builder.button(text="✏️ Edit", callback_data=ItemEdit(item_id=item_id).pack())
-    builder.button(text="👁 Preview", callback_data=ItemPreview(item_id=item_id).pack())
-    builder.button(text="⏰ Schedule", callback_data=ItemSchedule(item_id=item_id).pack())
-
-    # Row 2
-    builder.button(text="📡 Broadcast", callback_data=ItemBroadcast(item_id=item_id).pack())
-    builder.button(text="📦 Archive", callback_data=ItemArchive(item_id=item_id).pack())
-    builder.button(text="🗑 Delete", callback_data=ItemDelete(item_id=item_id).pack())
-
-    # Row 3
-    builder.button(text="← Back", callback_data=BucketSelect(bucket=bucket).pack())
-
-
-    builder.adjust(3, 3, 1)
+    if bucket == ContentBucket.DRAFTS:
+        builder.button(text="✍️ Edit", callback_data=ContentItemAction(item_id=item_id, action="edit").pack())
+        builder.button(text="📅 Schedule", callback_data=ContentItemAction(item_id=item_id, action="schedule").pack())
+        builder.button(text="🚀 Broadcast", callback_data=ContentItemAction(item_id=item_id, action="broadcast").pack())
+    elif bucket == ContentBucket.SCHEDULED:
+        builder.button(text="❌ Unschedule", callback_data=ContentItemAction(item_id=item_id, action="unschedule").pack())
+    elif bucket == ContentBucket.PUBLISHED:
+        builder.button(text="♻️ Repost", callback_data=ContentItemAction(item_id=item_id, action="repost").pack())
+    builder.button(text="🗑 Delete", callback_data=ContentItemAction(item_id=item_id, action="delete").pack())
+    builder.button(text="← Back", callback_data=ContentItemAction(item_id=item_id, action="back").pack())
+    builder.adjust(2)
     return builder.as_markup()
