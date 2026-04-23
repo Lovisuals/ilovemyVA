@@ -1,20 +1,14 @@
-"migrations/env.py"
-
 import os
 import sys
 from logging.config import fileConfig
-
+import sqlalchemy as sa
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-
 from alembic import context
-
 from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
 load_dotenv()
-
 config = context.config
 
 if config.config_file_name is not None:
@@ -28,12 +22,8 @@ target_metadata = Base.metadata
 def get_url():
     url = os.getenv("DATABASE_URL")
     if not url:
-        raise RuntimeError(
-            "DATABASE_URL environment variable is not set. "
-            "Please configure it in your Railway dashboard or .env file."
-        )
+        raise RuntimeError("DATABASE_URL not set")
     
-    # Masking password for safe logging
     from urllib.parse import urlparse
     parsed = urlparse(url)
     safe_url = f"{parsed.scheme}://{parsed.username}:****@{parsed.hostname}:{parsed.port}{parsed.path}"
@@ -65,10 +55,8 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
-
+        connection.execute(sa.text("SET lock_timeout = '10s'"))
+        context.configure(connection=connection, target_metadata=target_metadata)
         with context.begin_transaction():
             context.run_migrations()
 
