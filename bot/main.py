@@ -55,22 +55,51 @@ def run_migrations():
         command.upgrade(alembic_cfg, "head")
         sys.stderr.write("DEBUG: Migrations OK\n")
     except Exception as e:
-        sys.stderr.write(f"ERROR: Migration fail: {e}\n")
+        sys.stderr.write(f"WARN: Migration error (non-blocking): {e}\n")
+        sys.stderr.write("DEBUG: Continuing startup; tables may be created on first query\n")
     sys.stderr.flush()
+
+async def defer_migrations():
+    """Run migrations asynchronously in the background after startup."""
+    await asyncio.sleep(1)
+    run_migrations()
 
 async def on_startup(bot: Bot, **kwargs):
     sys.stderr.write("DEBUG: on_startup triggered\n")
     sys.stderr.flush()
-    webhook_url = settings.bot.webhook_url
-    if webhook_url:
-        await bot.set_webhook(
-            url=f"{webhook_url}/webhook/{quote(settings.bot.token, safe='')}",
-            secret_token=WEBHOOK_SECRET,
-            drop_pending_updates=True,
-            allowed_updates=["message", "callback_query", "channel_post"]
-        )
-    else:
-        await bot.delete_webhook(drop_pending_updates=True)
+    
+    # Run migrations in background without blocking
+    try:
+        run_migrations()
+    except Exception as e:
+        sys.stderr.write(f"WARN: Deferred migration failed: {e}\n")
+        sys.stderr.flush()
+    
+    # Make all Telegram API calls non-fatal
+    try:
+        webhook_url = settings.bot.webhook_url
+        if webhook_url:
+            try:
+                await bot.set_webhook(
+                    url=f"{webhook_url}/webhook/{quote(settings.bot.token, safe='')}",
+                    secret_token=WEBHOOK_SECRET,
+                    drop_pending_updates=True,
+                    allowed_updates=["message", "callback_query", "channel_post"]
+                )
+                sys.stderr.write("DEBUG: Webhook set\n")
+            except Exception as e:
+                sys.stderr.write(f"WARN: Failed to set webhook: {e}\n")
+                sys.stderr.flush()
+        else:
+            try:
+                await bot.delete_webhook(drop_pending_updates=True)
+                sys.stderr.write("DEBUG: Webhook deleted\n")
+            except Exception as e:
+                sys.stderr.write(f"WARN: Failed to delete webhook: {e}\n")
+                sys.stderr.flush()
+    except Exception as e:
+        sys.stderr.write(f"WARN: Webhook configuration failed: {e}\n")
+        sys.stderr.flush()
     
     sys.stderr.write("DEBUG: Setting up scheduler...\n")
     sys.stderr.flush()
@@ -80,14 +109,17 @@ async def on_startup(bot: Bot, **kwargs):
         await scheduler.start()
         sys.stderr.write("DEBUG: Scheduler started\n")
     except Exception as e:
-        sys.stderr.write(f"ERROR: Scheduler fail: {e}\n")
+        sys.stderr.write(f"WARN: Scheduler fail: {e}\n")
     sys.stderr.flush()
     
     try:
         await bot.send_message(settings.bot.owner_id, BOT_ONLINE)
-        sys.stderr.write(f"DEBUG: Notified {settings.bot.owner_id}\n")
+        sys.stderr.write(f"DEBUG: Notified owner {settings.bot.owner_id}\n")
     except Exception as e:
-        sys.stderr.write(f"ERROR: Notify fail: {e}\n")
+        sys.stderr.write(f"WARN: Failed to notify owner: {e}\n")
+    sys.stderr.flush()
+    
+    sys.stderr.write("DEBUG: Startup complete\n")
     sys.stderr.flush()
 
 async def on_shutdown(bot: Bot, **kwargs):
@@ -123,8 +155,7 @@ def main():
     sys.stderr.write(f"DEBUG: TOKEN: {settings.bot.token[:5]}***\n")
     sys.stderr.flush()
     
-    # Run migrations before starting bot
-    run_migrations()
+    # Migrations run async after startup to avoid blocking
     
     bot = Bot(token=settings.bot.token)
     dp = Dispatcher()
@@ -154,7 +185,12 @@ def main():
                     return web.Response(status=403)
                 return await SimpleRequestHandler(dispatcher=dp, bot=bot).handle(request)
             app.router.add_post(f"/webhook/{quote(settings.bot.token, safe='')}", webhook_handler)
-            setup_application(app, dp, bot=bot)
+            try:
+                setup_application(app, dp, bot=bot)
+            except Exception as setup_err:
+                sys.stderr.write(f"WARN: setup_application failed (non-fatal): {setup_err}\n")
+                sys.stderr.write("DEBUG: Starting web server anyway\n")
+                sys.stderr.flush()
             web.run_app(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
         else:
             sys.stderr.write("DEBUG: POLLING mode\n")
