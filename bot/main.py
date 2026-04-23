@@ -11,13 +11,38 @@ from aiogram.types import Update
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from alembic.config import Config
 from alembic import command
+
+print("DEBUG: main.py loading...")
+sys.stdout.flush()
+
 from bot.config import settings
 from bot.strings import BOT_ONLINE, BOT_SHUTDOWN
-from bot.routers import (
-    onboarding, admin, user_management, buckets,
-    drafting, editing, scheduling, broadcast,
-    settings as settings_router, moderation
-)
+
+print("DEBUG: Importing routers...")
+sys.stdout.flush()
+
+from bot.routers import onboarding
+print("DEBUG: Router onboarding loaded")
+from bot.routers import admin
+print("DEBUG: Router admin loaded")
+from bot.routers import user_management
+print("DEBUG: Router user_management loaded")
+from bot.routers import buckets
+print("DEBUG: Router buckets loaded")
+from bot.routers import drafting
+print("DEBUG: Router drafting loaded")
+from bot.routers import editing
+print("DEBUG: Router editing loaded")
+from bot.routers import scheduling
+print("DEBUG: Router scheduling loaded")
+from bot.routers import broadcast
+print("DEBUG: Router broadcast loaded")
+from bot.routers import settings as settings_router
+print("DEBUG: Router settings loaded")
+from bot.routers import moderation
+print("DEBUG: Router moderation loaded")
+sys.stdout.flush()
+
 from bot.middlewares.auth import AuthMiddleware
 from bot.middlewares.db_session import DbSessionMiddleware
 from bot.middlewares.rate_limit import RateLimitMiddleware
@@ -143,6 +168,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
