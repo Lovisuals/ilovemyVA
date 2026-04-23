@@ -29,22 +29,19 @@ logger = logging.getLogger(__name__)
 WEBHOOK_SECRET = secrets.token_hex(32)
 
 def run_migrations():
-    print("DEBUG: Entering run_migrations()")
+    print("DEBUG: Starting database migrations...")
     try:
         alembic_cfg = Config("alembic.ini")
-        print("DEBUG: Calling alembic command.upgrade...")
         command.upgrade(alembic_cfg, "head")
         print("DEBUG: Database migrations completed successfully.")
     except Exception as e:
         print(f"ERROR: Migration failed: {e}")
-    finally:
-        print("DEBUG: Exiting run_migrations()")
 
 async def on_startup(bot: Bot, **kwargs):
-    logger.info("Bot starting up...")
+    print("DEBUG: on_startup triggered")
     webhook_url = settings.bot.webhook_url
     if webhook_url:
-        logger.info(f"Setting up webhook at {webhook_url}")
+        print(f"DEBUG: Setting up webhook at {webhook_url}")
         await bot.set_webhook(
             url=f"{webhook_url}/webhook/{quote(settings.bot.token, safe='')}",
             secret_token=WEBHOOK_SECRET,
@@ -52,24 +49,23 @@ async def on_startup(bot: Bot, **kwargs):
             allowed_updates=["message", "callback_query", "channel_post"]
         )
     else:
-        logger.info("No webhook URL, deleting existing webhook for polling")
+        print("DEBUG: Using polling mode")
         await bot.delete_webhook(drop_pending_updates=True)
     
-    logger.info("Initializing scheduler...")
+    print("DEBUG: Setting up scheduler...")
     scheduler = await setup_scheduler()
     bot["scheduler"] = scheduler
-    
     await scheduler.start()
-    logger.info("Scheduler started.")
+    print("DEBUG: Scheduler started.")
     
     try:
         await bot.send_message(settings.bot.owner_id, BOT_ONLINE)
-        logger.info(f"Sent online notification to owner {settings.bot.owner_id}")
+        print(f"DEBUG: Sent online notification to {settings.bot.owner_id}")
     except Exception as e:
-        logger.warning(f"Could not send online notification to owner: {e}")
+        print(f"ERROR: Could not notify owner: {e}")
 
 async def on_shutdown(bot: Bot, **kwargs):
-    logger.info("Bot shutting down...")
+    print("DEBUG: on_shutdown triggered")
     try:
         await bot.send_message(settings.bot.owner_id, BOT_SHUTDOWN)
     except Exception:
@@ -78,18 +74,19 @@ async def on_shutdown(bot: Bot, **kwargs):
     if scheduler:
         await scheduler.stop()
     await bot.delete_webhook()
-    logger.info("Shutdown complete.")
 
 async def health_check(request):
     return web.json_response({"status": "ok", "version": "1.3"})
 
 def main():
     print("DEBUG: Entering main()")
-    logger.info("Initializing bot and dispatcher...")
+    print(f"DEBUG: CONFIG - TOKEN: {settings.bot.token[:5]}***")
+    print(f"DEBUG: CONFIG - OWNER: {settings.bot.owner_id}")
+    print(f"DEBUG: CONFIG - STORAGE: {settings.bot.storage_channel_id}")
+    print(f"DEBUG: CONFIG - MAIN: {settings.bot.main_channel_id}")
     
     import threading
-    # SIDE EFFECT: Running migrations in a separate thread to prevent startup block.
-    # Necessary to ensure the bot starts even if DB is locked.
+    # SIDE EFFECT: Running migrations in background to prevent startup hang.
     threading.Thread(target=run_migrations, daemon=True).start()
     
     bot = Bot(token=settings.bot.token)
@@ -115,7 +112,7 @@ def main():
     dp.shutdown.register(on_shutdown)
     
     if settings.bot.webhook_url:
-        logger.info("Starting Webhook mode...")
+        print("DEBUG: Starting in WEBHOOK mode")
         app = web.Application()
         app.router.add_get("/health", health_check)
         async def webhook_handler(request: web.Request) -> web.Response:
@@ -126,11 +123,12 @@ def main():
         setup_application(app, dp, bot=bot)
         web.run_app(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
     else:
-        logger.info("Starting Polling mode...")
+        print("DEBUG: Starting in POLLING mode")
         asyncio.run(dp.start_polling(bot))
 
 if __name__ == "__main__":
     main()
+
 
 
 
