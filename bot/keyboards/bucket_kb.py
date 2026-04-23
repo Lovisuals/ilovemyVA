@@ -4,6 +4,10 @@ from bot.callbacks import BucketPage, BucketSelect, ContentItemAction
 from bot.models.content_item import ContentBucket
 from bot.keyboards.pagination_kb import build_paginator_buttons
 
+def build_bucket_panel(bucket_name: str, items, page: int, total_pages: int) -> InlineKeyboardMarkup:
+    bucket = ContentBucket(bucket_name)
+    return build_content_list(items, bucket, page, total_pages)
+
 def build_bucket_list() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     buckets = [

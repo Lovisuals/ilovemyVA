@@ -12,6 +12,10 @@ class BucketPage(CallbackData, prefix="bucket_pg"):
 class ItemView(CallbackData, prefix="item_vw"):
     item_id: str
 
+class ContentItemAction(CallbackData, prefix="item_ac"):
+    item_id: str
+    action: str
+
 class ItemEdit(CallbackData, prefix="item_ed"):
     item_id: str
 

@@ -7,7 +7,7 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
-from apscheduler.schedulers.async_ import AsyncScheduler
+from apscheduler._schedulers.async_ import AsyncScheduler
 
 from bot.models.bot_user import BotUser, UserRole
 from bot.states.schedule_states import SchedulePicking

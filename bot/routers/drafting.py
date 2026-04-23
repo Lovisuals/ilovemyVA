@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from bot.models.bot_user import BotUser, UserRole
 from bot.models.content_item import ContentItem, ContentBucket
-from bot.states.draft_states import DraftingContent
+from bot.states.draft_states import DraftCreation
 from bot.services.content_service import ContentService
 
 router = Router()
@@ -14,10 +14,10 @@ router = Router()
 async def cmd_new_draft(message: Message, bot_user: BotUser, state: FSMContext):
     if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
         return
-    await state.set_state(DraftingContent.WAITING_FOR_TEXT)
+    await state.set_state(DraftCreation.WAITING_CONTENT)
     await message.answer("📝 Send me the text for your new post:")
 
-@router.message(DraftingContent.WAITING_FOR_TEXT)
+@router.message(DraftCreation.WAITING_CONTENT)
 async def on_text_received(message: Message, state: FSMContext, session: AsyncSession, bot_user: BotUser):
     await ContentService.create_item(
         session,
