@@ -29,12 +29,10 @@ class AgentService:
     async def run_draft_suggestion(text: str) -> DraftSuggestion:
         if not settings.ai_enabled:
             return DraftSuggestion(improved_text=text, diff="")
-        # Roadmap v1.4 - Placeholder logic that still returns a valid object
         return DraftSuggestion(improved_text=text, diff="")
 
     @staticmethod
     async def run_faq_match(text: str) -> FaqMatch:
         if not settings.ai_enabled:
             return FaqMatch(matched=False, confidence=0.0)
-        # Roadmap v1.4 - Placeholder logic that still returns a valid object
         return FaqMatch(matched=False, confidence=0.0)

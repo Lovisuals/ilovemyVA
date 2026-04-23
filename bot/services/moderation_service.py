@@ -56,7 +56,6 @@ class ModerationService:
 
     @staticmethod
     async def send_escalation(bot: Bot, event: ModerationEvent):
-        # Notify owner/admins
         kb = build_moderation_actions(str(event.id))
         await bot.send_message(
             settings.bot.owner_id,
