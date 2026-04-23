@@ -27,7 +27,12 @@ target_metadata = Base.metadata
 
 def get_url():
     url = os.getenv("DATABASE_URL")
-    if url and url.startswith("postgres://"):
+    if not url:
+        raise RuntimeError(
+            "DATABASE_URL environment variable is not set. "
+            "Please configure it in your Railway dashboard or .env file."
+        )
+    if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
     return url
 

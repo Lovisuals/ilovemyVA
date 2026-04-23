@@ -65,6 +65,8 @@ def upgrade() -> None:
     op.create_index(op.f('ix_content_items_content_hash'), 'content_items', ['content_hash'], unique=False)
     op.create_index(op.f('ix_content_items_created_at'), 'content_items', ['created_at'], unique=False)
     op.create_index(op.f('ix_content_items_scheduled_at'), 'content_items', ['scheduled_at'], unique=False)
+    op.create_index('ix_content_items_bucket_scheduled_at', 'content_items', ['bucket', 'scheduled_at'], unique=False)
+    op.create_index('ix_content_items_created_by_created_at', 'content_items', ['created_by', 'created_at'], unique=False)
 
     op.create_table('broadcast_logs',
         sa.Column('id', sa.UUID(), nullable=False),
@@ -93,6 +95,7 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_audit_logs_event_code'), 'audit_logs', ['event_code'], unique=False)
     op.create_index(op.f('ix_audit_logs_created_at'), 'audit_logs', ['created_at'], unique=False)
+    op.create_index('ix_audit_logs_event_code_created_at', 'audit_logs', ['event_code', 'created_at'], unique=False)
 
     op.create_table('storage_records',
         sa.Column('id', sa.UUID(), nullable=False),
@@ -118,14 +121,17 @@ def upgrade() -> None:
         sa.Column('count', sa.Integer(), nullable=False),
         sa.PrimaryKeyConstraint('id')
     )
+
     op.create_table('moderation_events',
         sa.Column('id', sa.UUID(), nullable=False),
-        sa.Column('content_id', sa.UUID(), nullable=False),
-        sa.Column('moderator_id', sa.BigInteger(), nullable=True),
-        sa.Column('status', sa.String(length=32), nullable=False),
-        sa.Column('reason', sa.Text(), nullable=True),
+        sa.Column('event_type', sa.Enum('SPAM', 'TONE_FLAG', 'WARN', 'MUTE', 'BAN_REQUEST', 'DELETE', name='moderationeventtype'), nullable=False),
+        sa.Column('actor_user_id', sa.BigInteger(), nullable=False),
+        sa.Column('chat_id', sa.BigInteger(), nullable=False),
+        sa.Column('message_id', sa.BigInteger(), nullable=True),
+        sa.Column('resolved_by', sa.BigInteger(), nullable=True),
+        sa.Column('resolution', sa.Enum('APPROVED', 'IGNORED', 'WARN_ISSUED', name='moderationresolution'), nullable=True),
+        sa.Column('detail', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(['content_id'], ['content_items.id'], ),
         sa.PrimaryKeyConstraint('id')
     )
 
@@ -133,11 +139,14 @@ def downgrade() -> None:
     op.drop_table('moderation_events')
     op.drop_table('rate_limit_events')
     op.drop_table('storage_records')
+    op.drop_index('ix_audit_logs_event_code_created_at', table_name='audit_logs')
     op.drop_index(op.f('ix_audit_logs_created_at'), table_name='audit_logs')
     op.drop_index(op.f('ix_audit_logs_event_code'), table_name='audit_logs')
     op.drop_table('audit_logs')
     op.drop_index(op.f('ix_broadcast_logs_content_id'), table_name='broadcast_logs')
     op.drop_table('broadcast_logs')
+    op.drop_index('ix_content_items_created_by_created_at', table_name='content_items')
+    op.drop_index('ix_content_items_bucket_scheduled_at', table_name='content_items')
     op.drop_index(op.f('ix_content_items_scheduled_at'), table_name='content_items')
     op.drop_index(op.f('ix_content_items_created_at'), table_name='content_items')
     op.drop_index(op.f('ix_content_items_content_hash'), table_name='content_items')
@@ -150,3 +159,5 @@ def downgrade() -> None:
     sa.Enum(name='parsemode').drop(op.get_bind())
     sa.Enum(name='broadcaststatus').drop(op.get_bind())
     sa.Enum(name='filetype').drop(op.get_bind())
+    sa.Enum(name='moderationeventtype').drop(op.get_bind())
+    sa.Enum(name='moderationresolution').drop(op.get_bind())

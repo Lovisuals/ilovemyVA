@@ -24,24 +24,26 @@ from bot.scheduler.setup import setup_scheduler
 
 WEBHOOK_SECRET = secrets.token_hex(32)
 
-async def on_startup(bot: Bot, dispatcher: Dispatcher, app: web.Application):
-    await bot.set_webhook(
-        url=f"{settings.bot.webhook_url}/webhook/{quote(settings.bot.token, safe='')}",
-        secret_token=WEBHOOK_SECRET,
-        drop_pending_updates=True,
-        allowed_updates=["message", "callback_query", "channel_post"]
-    )
+async def on_startup(bot: Bot, **kwargs):
+    webhook_url = settings.bot.webhook_url
+    if webhook_url:
+        await bot.set_webhook(
+            url=f"{webhook_url}/webhook/{quote(settings.bot.token, safe='')}",
+            secret_token=WEBHOOK_SECRET,
+            drop_pending_updates=True,
+            allowed_updates=["message", "callback_query", "channel_post"]
+        )
 
     scheduler = await setup_scheduler()
-    app["scheduler"] = scheduler
+    bot["scheduler"] = scheduler
     await scheduler.start_in_background()
 
     await bot.send_message(settings.bot.owner_id, BOT_ONLINE)
 
-async def on_shutdown(bot: Bot, dispatcher: Dispatcher, app: web.Application):
+async def on_shutdown(bot: Bot, **kwargs):
     await bot.send_message(settings.bot.owner_id, BOT_SHUTDOWN)
 
-    scheduler = app.get("scheduler")
+    scheduler = bot.get("scheduler")
     if scheduler:
         await scheduler.stop()
 

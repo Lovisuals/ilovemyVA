@@ -1,7 +1,7 @@
 "bot/keyboards/user_mgmt_kb.py"
 
 from typing import List
-from aiogram.types import InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.callbacks import UserAction, UserPage
@@ -22,10 +22,10 @@ def build_user_list(users: List[BotUser], page: int, total_pages: int) -> Inline
         icon = role_icons.get(user.role, "❓")
         name = user.full_name or "Unknown"
         builder.row(
-            builder.button(
+            InlineKeyboardButton(
                 text=f"{icon} {name} (@{user.username or 'N/A'})",
                 callback_data=UserAction(user_id=user.id, action="view").pack()
-            ).button
+            )
         )
 
     if total_pages > 1:

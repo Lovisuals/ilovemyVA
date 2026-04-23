@@ -41,46 +41,49 @@ class AuthMiddleware(BaseMiddleware):
         if not user_id:
             return await handler(event, data)
 
-        async with async_session() as session:
-            stmt = select(BotUser).where(BotUser.id == user_id)
-            result = await session.execute(stmt)
-            bot_user = result.scalar_one_or_none()
+        session: AsyncSession = data.get("session")
+        if not session:
+            return await handler(event, data)
 
-            if not bot_user:
-                role = UserRole.SUPERADMIN if user_id == settings.bot.owner_id else UserRole.PENDING
-                bot_user = BotUser(
-                    id=user_id,
-                    username=user_name,
-                    full_name=full_name or "Unknown",
-                    role=role,
-                    last_seen=datetime.now(timezone.utc)
-                )
-                session.add(bot_user)
-                await session.commit()
-                await session.refresh(bot_user)
-            else:
-                bot_user.last_seen = datetime.now(timezone.utc)
-                bot_user.username = user_name
-                bot_user.full_name = full_name or bot_user.full_name
-                await session.commit()
+        stmt = select(BotUser).where(BotUser.id == user_id)
+        result = await session.execute(stmt)
+        bot_user = result.scalar_one_or_none()
 
-            if not bot_user.is_active:
+        if not bot_user:
+            role = UserRole.SUPERADMIN if user_id == settings.bot.owner_id else UserRole.PENDING
+            bot_user = BotUser(
+                id=user_id,
+                username=user_name,
+                full_name=full_name or "Unknown",
+                role=role,
+                last_seen=datetime.now(timezone.utc)
+            )
+            session.add(bot_user)
+            await session.commit()
+            await session.refresh(bot_user)
+        else:
+            bot_user.last_seen = datetime.now(timezone.utc)
+            bot_user.username = user_name
+            bot_user.full_name = full_name or bot_user.full_name
+            await session.commit()
+
+        if not bot_user.is_active:
+            if event.message:
+                await event.message.answer(ACCOUNT_DEACTIVATED)
+            elif event.callback_query:
+                await event.callback_query.answer(ACCOUNT_DEACTIVATED, show_alert=True)
+            return
+
+        if bot_user.role == UserRole.PENDING:
+            is_start = event.message and event.message.text and event.message.text.startswith("/start")
+            is_code = event.message and event.message.text and "-" in event.message.text
+            if not (is_start or is_code):
                 if event.message:
-                    await event.message.answer(ACCOUNT_DEACTIVATED)
+                    await event.message.answer(PENDING_ACCESS)
                 elif event.callback_query:
-                    await event.callback_query.answer(ACCOUNT_DEACTIVATED, show_alert=True)
+                    await event.callback_query.answer(PENDING_ACCESS, show_alert=True)
                 return
 
-            if bot_user.role == UserRole.PENDING:
-                is_start = event.message and event.message.text and event.message.text.startswith("/start")
-                is_code = event.message and event.message.text and "-" in event.message.text
-                if not (is_start or is_code):
-                    if event.message:
-                        await event.message.answer(PENDING_ACCESS)
-                    elif event.callback_query:
-                        await event.callback_query.answer(PENDING_ACCESS, show_alert=True)
-                    return
-
-            data["bot_user"] = bot_user
+        data["bot_user"] = bot_user
 
         return await handler(event, data)

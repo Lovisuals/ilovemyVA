@@ -7,7 +7,7 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.schedulers.async_ import AsyncScheduler
 
 from bot.models.bot_user import BotUser, UserRole
 from bot.states.schedule_states import SchedulePicking
@@ -48,7 +48,7 @@ async def on_recurrence_picked(
     query: CallbackQuery,
     state: FSMContext,
     session: AsyncSession,
-    scheduler: AsyncIOScheduler
+    bot: object
 ):
     parts = query.data.split(":")
     recurrence = parts[2]
@@ -56,7 +56,11 @@ async def on_recurrence_picked(
     item_id = uuid.UUID(data["sch_item_id"])
     time_str = data["sch_time"]
 
-    # Calculate next run time
+    scheduler = bot.get("scheduler")
+    if not scheduler:
+        await query.answer("Scheduler not available.")
+        return
+
     h, m = map(int, time_str.split(":"))
     tz = pytz.timezone("Africa/Lagos")
     now = datetime.now(tz)

@@ -1,7 +1,7 @@
 "bot/keyboards/broadcast_kb.py"
 
 from typing import List, Dict
-from aiogram.types import InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bot.callbacks import BroadcastToggle, BroadcastDone
 
@@ -13,16 +13,16 @@ def build_target_selector(item_id: str, targets: List[Dict], selected_ids: List[
         icon = "☑️" if is_selected else "⬜️"
         builder.button(
             text=f"{icon} {target['name']}",
-            callback_data=BroadcastToggle(item_id=item_id, chat_id=str(target["chat_id"]))
+            callback_data=BroadcastToggle(item_id=item_id, chat_id=str(target["chat_id"])).pack()
         )
 
     builder.adjust(1)
 
     builder.row(
-        builder.button(
+        InlineKeyboardButton(
             text=f"✅ Done ({len(selected_ids)} selected)",
-            callback_data=BroadcastDone(item_id=item_id)
-        ).button
+            callback_data=BroadcastDone(item_id=item_id).pack()
+        )
     )
 
     return builder.as_markup()

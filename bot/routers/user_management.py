@@ -49,17 +49,24 @@ async def on_user_action(query: CallbackQuery, bot_user: BotUser, session: Async
                 f"👤 **User Info**\n\nName: {target.full_name}\nRole: {target.role.value}\nJoined: {target.joined_at}",
                 reply_markup=kb
             )
+        await query.answer()
     elif action == "promote":
-        if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]: return
+        if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
+            await query.answer()
+            return
         await UserService.promote(session, target_id, bot_user.id)
         await query.answer(f"User {target_id} promoted to Admin.")
     elif action == "demote":
-        if bot_user.role != UserRole.SUPERADMIN: return
+        if bot_user.role != UserRole.SUPERADMIN:
+            await query.answer()
+            return
         await UserService.demote(session, target_id)
         await query.answer(f"User {target_id} demoted to User.")
     elif action == "remove":
-        if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]: return
+        if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
+            await query.answer()
+            return
         await UserService.deactivate(session, target_id)
         await query.answer(f"User {target_id} deactivated.")
-
-    await query.answer()
+    else:
+        await query.answer()

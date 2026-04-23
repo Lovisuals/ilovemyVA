@@ -8,9 +8,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml .
+COPY bot/ bot/
+COPY database/ database/
+COPY migrations/ migrations/
+COPY alembic.ini .
+
 RUN pip install --no-cache-dir .
 
 FROM python:3.12-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -m botuser
 USER botuser
@@ -22,4 +31,4 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 COPY . .
 
-CMD ["python", "-m", "bot.main"]
+CMD ["sh", "-c", "alembic upgrade head && python -m bot.main"]

@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.models.rate_limit import RateLimitEvent
 from bot.strings import RATE_LIMITED
-from database.session import async_session
 
 class RateLimitMiddleware(BaseMiddleware):
     async def __call__(
@@ -29,34 +28,37 @@ class RateLimitMiddleware(BaseMiddleware):
         if not user_id:
             return await handler(event, data)
 
+        session: AsyncSession = data.get("session")
+        if not session:
+            return await handler(event, data)
+
         now = datetime.now(timezone.utc)
         window_start = now - timedelta(minutes=1)
 
-        async with async_session() as session:
-            stmt = select(RateLimitEvent).where(
-                RateLimitEvent.user_id == user_id,
-                RateLimitEvent.window_start > window_start
+        stmt = select(RateLimitEvent).where(
+            RateLimitEvent.user_id == user_id,
+            RateLimitEvent.window_start > window_start
+        )
+        result = await session.execute(stmt)
+        limit_event = result.scalar_one_or_none()
+
+        if limit_event:
+            if limit_event.count >= 30:
+                if event.message:
+                    await event.message.answer(RATE_LIMITED)
+                elif event.callback_query:
+                    await event.callback_query.answer(RATE_LIMITED, show_alert=True)
+                return
+            limit_event.count += 1
+        else:
+            limit_event = RateLimitEvent(
+                user_id=user_id,
+                window_start=now,
+                count=1
             )
-            result = await session.execute(stmt)
-            limit_event = result.scalar_one_or_none()
+            session.add(limit_event)
 
-            if limit_event:
-                if limit_event.count >= 30:
-                    if event.message:
-                        await event.message.answer(RATE_LIMITED)
-                    elif event.callback_query:
-                        await event.callback_query.answer(RATE_LIMITED, show_alert=True)
-                    return
-                limit_event.count += 1
-            else:
-                limit_event = RateLimitEvent(
-                    user_id=user_id,
-                    window_start=now,
-                    count=1
-                )
-                session.add(limit_event)
-
-            await session.commit()
+        await session.commit()
 
         return await handler(event, data)
 

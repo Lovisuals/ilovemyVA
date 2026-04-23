@@ -2,14 +2,17 @@
 
 from apscheduler.schedulers.async_ import AsyncScheduler
 from apscheduler.datastores.sqlalchemy import SQLAlchemyDataStore
+from sqlalchemy import create_engine
 from bot.config import settings
 
 async def setup_scheduler() -> AsyncScheduler:
-    # Transform async DSN to sync for APScheduler SQLAlchemy store
     sync_url = settings.database.url
     if sync_url.startswith("postgres://"):
         sync_url = sync_url.replace("postgres://", "postgresql://", 1)
+    elif sync_url.startswith("postgresql+asyncpg://"):
+        sync_url = sync_url.replace("postgresql+asyncpg://", "postgresql://", 1)
 
-    data_store = SQLAlchemyDataStore(url=sync_url)
-    scheduler = AsyncScheduler(data_store)
+    engine = create_engine(sync_url)
+    data_store = SQLAlchemyDataStore(engine)
+    scheduler = AsyncScheduler(data_store=data_store)
     return scheduler

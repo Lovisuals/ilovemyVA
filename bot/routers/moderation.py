@@ -25,7 +25,7 @@ async def on_moderation_resolve(query: CallbackQuery, bot_user: BotUser, session
 
     stmt = select(ModerationEvent).where(ModerationEvent.id == event_id)
     result = await session.execute(stmt)
-    event = result.scalar_one_with_none()
+    event = result.scalar_one_or_none()
 
     if not event:
         await query.answer(INVALID_ACTION)
