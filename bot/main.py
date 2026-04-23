@@ -29,14 +29,15 @@ logger = logging.getLogger(__name__)
 WEBHOOK_SECRET = secrets.token_hex(32)
 
 def run_migrations():
-    logger.info("Running database migrations...")
+    print("DEBUG: Starting database migrations...")
     try:
         alembic_cfg = Config("alembic.ini")
         command.upgrade(alembic_cfg, "head")
-        logger.info("Database migrations completed successfully.")
+        print("DEBUG: Database migrations completed successfully.")
     except Exception as e:
-        logger.error(f"Migration failed: {e}")
-        # We continue anyway as the DB might already be up to date
+        print(f"ERROR: Migration failed: {e}")
+    finally:
+        print("DEBUG: Exiting run_migrations()")
 
 async def on_startup(bot: Bot, **kwargs):
     logger.info("Bot starting up...")

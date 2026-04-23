@@ -32,6 +32,13 @@ def get_url():
             "DATABASE_URL environment variable is not set. "
             "Please configure it in your Railway dashboard or .env file."
         )
+    
+    # Masking password for safe logging
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    safe_url = f"{parsed.scheme}://{parsed.username}:****@{parsed.hostname}:{parsed.port}{parsed.path}"
+    print(f"DEBUG: Migration target URL: {safe_url}")
+
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
     return url
