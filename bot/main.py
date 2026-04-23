@@ -5,8 +5,9 @@ import secrets
 import asyncio
 import threading
 from urllib.parse import quote
+from typing import Any, Awaitable, Callable, Dict
 from aiohttp import web
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, BaseMiddleware
 from aiogram.types import Update
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from alembic.config import Config
@@ -104,13 +105,26 @@ async def on_shutdown(bot: Bot, **kwargs):
 async def health_check(request):
     return web.json_response({"status": "ok", "version": "1.4"})
 
+class BotInjectionMiddleware(BaseMiddleware):
+    def __init__(self, bot: Bot):
+        self.bot = bot
+    
+    async def __call__(
+        self,
+        handler: Callable[[Update, Dict[str, Any]], Awaitable[Any]],
+        event: Update,
+        data: Dict[str, Any],
+    ) -> Any:
+        data["bot"] = self.bot
+        return await handler(event, data)
+
 def main():
     sys.stderr.write("DEBUG: Entering main()\n")
     sys.stderr.write(f"DEBUG: TOKEN: {settings.bot.token[:5]}***\n")
     sys.stderr.flush()
     
-    # SIDE EFFECT: Migrations disabled for isolation testing.
-    # threading.Thread(target=run_migrations, daemon=True).start()
+    # Run migrations before starting bot
+    run_migrations()
     
     bot = Bot(token=settings.bot.token)
     dp = Dispatcher()
@@ -125,6 +139,7 @@ def main():
     dp.update.outer_middleware(RateLimitMiddleware())
     dp.update.outer_middleware(AuthMiddleware())
     dp.update.outer_middleware(ErrorHandlerMiddleware())
+    dp.update.outer_middleware(BotInjectionMiddleware(bot))
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
     

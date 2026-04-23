@@ -1,6 +1,7 @@
 "bot/middlewares/error_handler.py"
 
 import traceback
+import sys
 from typing import Any, Awaitable, Callable, Dict
 
 import structlog
@@ -24,6 +25,8 @@ class ErrorHandlerMiddleware(BaseMiddleware):
             return await handler(event, data)
         except Exception as e:
             error_trace = traceback.format_exc()
+            sys.stderr.write(f"ERROR in handler: {str(e)}\n{error_trace}\n")
+            sys.stderr.flush()
             logger.error("unhandled_exception", error=str(e), trace=error_trace)
 
             user_id = None
@@ -32,20 +35,29 @@ class ErrorHandlerMiddleware(BaseMiddleware):
             elif event.callback_query:
                 user_id = event.callback_query.from_user.id
 
-            async with async_session() as session:
-                audit = AuditLog(
-                    event_code="CRITICAL",
-                    actor_id=user_id,
-                    level="CRITICAL",
-                    detail={"error": str(e), "trace": error_trace}
-                )
-                session.add(audit)
-                await session.commit()
+            try:
+                async with async_session() as session:
+                    audit = AuditLog(
+                        event_code="CRITICAL",
+                        actor_id=user_id,
+                        level="CRITICAL",
+                        detail={"error": str(e), "trace": error_trace}
+                    )
+                    session.add(audit)
+                    await session.commit()
+            except Exception as audit_err:
+                sys.stderr.write(f"Failed to log audit: {audit_err}\n")
+                sys.stderr.flush()
 
-            bot = data["bot"]
-            await bot.send_message(
-                settings.bot.owner_id,
-                f"🚨 **CRITICAL ERROR**\n\nUser: {user_id}\nError: {str(e)}\n\nCheck logs for full traceback."
-            )
+            try:
+                bot = data.get("bot")
+                if bot:
+                    await bot.send_message(
+                        settings.bot.owner_id,
+                        f"🚨 **CRITICAL ERROR**\n\nUser: {user_id}\nError: {str(e)}\n\nCheck logs for full traceback."
+                    )
+            except Exception as notify_err:
+                sys.stderr.write(f"Failed to notify admin: {notify_err}\n")
+                sys.stderr.flush()
 
             return
