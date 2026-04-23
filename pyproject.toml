@@ -1,0 +1,28 @@
+[project]
+name = "medlocum_content_bot"
+version = "1.3.0"
+description = "Advanced Content Manager Bot for Medical Locum Channels"
+authors = [
+    { name = "Antigravity", email = "antigravity@google.com" }
+]
+dependencies = [
+    "aiogram==3.7.0",
+    "pydantic-settings==2.3.0",
+    "sqlalchemy==2.0.30",
+    "asyncpg==0.29.0",
+    "alembic==1.13.1",
+    "apscheduler==4.0.0a4",
+    "redis==5.0.4",
+    "structlog==24.1.0",
+    "python-dotenv==1.0.1",
+    "httpx==0.27.0",
+    "google-generativeai==1.10.0",
+    "pytz==2024.1",
+    "aiohttp==3.9.5",
+    "psycopg2-binary==2.9.9"
+]
+requires-python = ">=3.12"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

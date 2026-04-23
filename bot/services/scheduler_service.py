@@ -1,0 +1,54 @@
+"bot/services/scheduler_service.py"
+
+import uuid
+from datetime import datetime
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from bot.models.content_item import ContentItem, ContentBucket
+
+class SchedulerService:
+    @staticmethod
+    async def register_job(
+        session: AsyncSession, 
+        scheduler: AsyncIOScheduler, 
+        item_id: uuid.UUID, 
+        run_at: datetime, 
+        recurrence: str
+    ) -> str:
+        from bot.scheduler.jobs import publish_job
+        
+        job_id = str(item_id)
+        scheduler.add_job(
+            publish_job,
+            trigger="date",
+            run_date=run_at,
+            id=job_id,
+            args=[item_id],
+            replace_existing=True
+        )
+        
+        stmt = (
+            select(ContentItem)
+            .where(ContentItem.id == item_id)
+        )
+        # Fix: We need to import select
+        from sqlalchemy import select
+        result = await session.execute(stmt)
+        item = result.scalar_one_or_none()
+        
+        if item:
+            item.scheduler_job_id = job_id
+            item.scheduled_at = run_at
+            item.recurrence = recurrence
+            item.bucket = ContentBucket.SCHEDULED
+            await session.commit()
+            
+        return job_id
+
+    @staticmethod
+    async def cancel_job(scheduler: AsyncIOScheduler, job_id: str) -> None:
+        try:
+            scheduler.remove_job(job_id)
+        except Exception:
+            pass
