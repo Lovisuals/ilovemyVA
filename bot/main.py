@@ -7,6 +7,8 @@ from aiohttp import web
 from aiogram import Bot, Dispatcher
 from aiogram.types import Update
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+from alembic.config import Config
+from alembic import command
 from bot.config import settings
 from bot.strings import BOT_ONLINE, BOT_SHUTDOWN
 from bot.routers import (
@@ -25,6 +27,16 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 WEBHOOK_SECRET = secrets.token_hex(32)
+
+def run_migrations():
+    logger.info("Running database migrations...")
+    try:
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Database migrations completed successfully.")
+    except Exception as e:
+        logger.error(f"Migration failed: {e}")
+        # We continue anyway as the DB might already be up to date
 
 async def on_startup(bot: Bot, **kwargs):
     logger.info("Bot starting up...")
@@ -45,7 +57,6 @@ async def on_startup(bot: Bot, **kwargs):
     scheduler = await setup_scheduler()
     bot["scheduler"] = scheduler
     
-    # APScheduler 4.x start
     await scheduler.start()
     logger.info("Scheduler started.")
     
@@ -72,6 +83,7 @@ async def health_check(request):
 
 def main():
     logger.info("Initializing bot and dispatcher...")
+    run_migrations()
     bot = Bot(token=settings.bot.token)
     dp = Dispatcher()
     dp.include_routers(

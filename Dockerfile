@@ -29,4 +29,4 @@ COPY . .
 
 USER botuser
 
-CMD ["sh", "-c", "alembic upgrade head && python -m bot.main"]
+CMD ["python", "-m", "bot.main"]
