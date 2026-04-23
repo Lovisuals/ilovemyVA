@@ -86,7 +86,12 @@ async def health_check(request):
 def main():
     print("DEBUG: Entering main()")
     logger.info("Initializing bot and dispatcher...")
-    run_migrations()
+    
+    import threading
+    # SIDE EFFECT: Running migrations in a separate thread to prevent startup block.
+    # Necessary to ensure the bot starts even if DB is locked.
+    threading.Thread(target=run_migrations, daemon=True).start()
+    
     bot = Bot(token=settings.bot.token)
     dp = Dispatcher()
     dp.include_routers(
@@ -126,5 +131,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
