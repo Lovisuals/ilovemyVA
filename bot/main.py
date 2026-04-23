@@ -29,9 +29,10 @@ logger = logging.getLogger(__name__)
 WEBHOOK_SECRET = secrets.token_hex(32)
 
 def run_migrations():
-    print("DEBUG: Starting database migrations...")
+    print("DEBUG: Entering run_migrations()")
     try:
         alembic_cfg = Config("alembic.ini")
+        print("DEBUG: Calling alembic command.upgrade...")
         command.upgrade(alembic_cfg, "head")
         print("DEBUG: Database migrations completed successfully.")
     except Exception as e:
@@ -83,6 +84,7 @@ async def health_check(request):
     return web.json_response({"status": "ok", "version": "1.3"})
 
 def main():
+    print("DEBUG: Entering main()")
     logger.info("Initializing bot and dispatcher...")
     run_migrations()
     bot = Bot(token=settings.bot.token)
@@ -124,4 +126,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

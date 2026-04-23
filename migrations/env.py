@@ -24,13 +24,19 @@ def get_url():
     if not url:
         raise RuntimeError("DATABASE_URL not set")
     
-    from urllib.parse import urlparse
-    parsed = urlparse(url)
-    safe_url = f"{parsed.scheme}://{parsed.username}:****@{parsed.hostname}:{parsed.port}{parsed.path}"
-    print(f"DEBUG: Migration target URL: {safe_url}")
-
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
+    
+    if "?" in url:
+        url += "&connect_timeout=10"
+    else:
+        url += "?connect_timeout=10"
+        
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    safe_url = f"{parsed.scheme}://{parsed.username}:****@{parsed.hostname}:{parsed.port}{parsed.path}?{parsed.query}"
+    print(f"DEBUG: Migration target URL: {safe_url}")
+
     return url
 
 def run_migrations_offline() -> None:
