@@ -13,6 +13,7 @@ class BotSettings(BaseSettings):
     webhook_url: Optional[str] = Field(None, alias="WEBHOOK_URL")
     port: int = Field(8080, alias="PORT")
     storage_channel_id: int = Field(..., alias="STORAGE_CHANNEL_ID")
+    main_channel_id: int = Field(..., alias="MAIN_CHANNEL_ID")
 
     @field_validator("admin_ids", mode="before")
     @classmethod

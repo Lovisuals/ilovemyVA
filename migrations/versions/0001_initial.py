@@ -3,7 +3,7 @@
 """initial
 
 Revision ID: 0001
-Revises: 
+Revises:
 Create Date: 2024-04-23 19:30:00.000000
 
 """
@@ -118,9 +118,19 @@ def upgrade() -> None:
         sa.Column('count', sa.Integer(), nullable=False),
         sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_rate_limit_events_user_id'), 'rate_limit_events', ['user_id'], unique=False)
+    op.create_table('moderation_events',
+        sa.Column('id', sa.UUID(), nullable=False),
+        sa.Column('content_id', sa.UUID(), nullable=False),
+        sa.Column('moderator_id', sa.BigInteger(), nullable=True),
+        sa.Column('status', sa.String(length=32), nullable=False),
+        sa.Column('reason', sa.Text(), nullable=True),
+        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(['content_id'], ['content_items.id'], ),
+        sa.PrimaryKeyConstraint('id')
+    )
 
 def downgrade() -> None:
+    op.drop_table('moderation_events')
     op.drop_table('rate_limit_events')
     op.drop_table('storage_records')
     op.drop_index(op.f('ix_audit_logs_created_at'), table_name='audit_logs')
@@ -134,4 +144,9 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_content_items_bucket'), table_name='content_items')
     op.drop_table('content_items')
     op.drop_table('bot_users')
- Riverside is a 36 000+ member medical professional Telegram community. Professionalism is not optional. Security is not optional. Completeness is not optional.
+
+    sa.Enum(name='userrole').drop(op.get_bind())
+    sa.Enum(name='contentbucket').drop(op.get_bind())
+    sa.Enum(name='parsemode').drop(op.get_bind())
+    sa.Enum(name='broadcaststatus').drop(op.get_bind())
+    sa.Enum(name='filetype').drop(op.get_bind())

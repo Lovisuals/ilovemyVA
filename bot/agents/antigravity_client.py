@@ -32,4 +32,3 @@ class AntigravityClient:
             {"content": text, "tone": "professional_medical"},
             DraftSuggestion
         )
- Riverside is a 36 000+ member medical professional Telegram community. Professionalism is not optional. Security is not optional. Completeness is not optional.

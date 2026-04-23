@@ -11,10 +11,12 @@ from bot.config import settings
 from bot.models.bot_user import BotUser, UserRole
 from bot.utils.luhn import generate_verification_code, validate_luhn
 from bot.strings import (
-    WELCOME_PENDING, NEW_USER_NOTIFICATION, 
-    ADMIN_CODE_FOR_USER, ONBOARD_SUCCESS, 
+    WELCOME_PENDING, NEW_USER_NOTIFICATION,
+    ADMIN_CODE_FOR_USER, ONBOARD_SUCCESS,
     CODE_INVALID, CODE_EXPIRED
 )
+
+from bot.callbacks import OnboardGen
 
 router = Router()
 
@@ -25,40 +27,47 @@ async def cmd_start(message: Message, bot_user: BotUser, bot: Bot):
         return
 
     await message.answer(WELCOME_PENDING)
-    
+
     # Notify admins
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=f"🔑 Generate Code for @{bot_user.username or 'user'}", callback_data=f"onb_g:{bot_user.id}")]
+        [InlineKeyboardButton(
+            text=f"🔑 Generate Code for @{bot_user.username or 'user'}",
+            callback_data=OnboardGen(user_id=bot_user.id).pack()
+        )]
     ])
-    
+
     await bot.send_message(
         settings.bot.owner_id,
         NEW_USER_NOTIFICATION.format(
-            name=bot_user.full_name, 
-            username=bot_user.username or "N/A", 
+            name=bot_user.full_name,
+            username=bot_user.username or "N/A",
             user_id=bot_user.id
         ),
         reply_markup=kb
     )
 
-@router.callback_query(F.data.startswith("onb_g:"))
-async def on_generate_code(query: CallbackQuery, session: AsyncSession):
-    user_id = int(query.data.split(":")[1])
+@router.callback_query(OnboardGen.filter())
+async def on_generate_code(query: CallbackQuery, callback_data: OnboardGen, session: AsyncSession):
+    await query.answer("Code generated.")
+    user_id = callback_data.user_id
     code = generate_verification_code(user_id)
-    
+
     stmt = select(BotUser).where(BotUser.id == user_id)
     result = await session.execute(stmt)
-    user = result.scalar_one_with_none()
-    
+    user = result.scalar_one_or_none()
+
     if user:
         user.verification_code = code
         user.code_generated_at = datetime.now(timezone.utc)
         user.code_used = False
-        await session.commit()
-        
+        try:
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
         await query.message.answer(ADMIN_CODE_FOR_USER.format(code=code), parse_mode="Markdown")
-        await query.answer("Code generated.")
 
 @router.message(lambda m: m.text and "-" in m.text)
 async def on_code_submission(message: Message, bot_user: BotUser, session: AsyncSession):
@@ -66,7 +75,7 @@ async def on_code_submission(message: Message, bot_user: BotUser, session: Async
         return
 
     submitted_code = message.text.strip()
-    
+
     if not validate_luhn(submitted_code):
         await message.answer(CODE_INVALID)
         return
@@ -87,7 +96,10 @@ async def on_code_submission(message: Message, bot_user: BotUser, session: Async
     bot_user.role = UserRole.USER
     bot_user.code_used = True
     bot_user.joined_at = datetime.now(timezone.utc)
-    await session.commit()
-    
+    try:
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+
     await message.answer(ONBOARD_SUCCESS)
- Riverside is a 36 000+ member medical professional Telegram community. Professionalism is not optional. Security is not optional. Completeness is not optional.

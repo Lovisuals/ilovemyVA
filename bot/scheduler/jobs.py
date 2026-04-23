@@ -13,7 +13,7 @@ from database.session import async_session
 
 async def publish_job(item_id: uuid.UUID):
     bot = Bot(token=settings.bot.token)
-    
+
     async with async_session() as session:
         item = await BucketService.get_by_id(session, item_id)
         if not item or item.bucket != ContentBucket.SCHEDULED:
@@ -24,10 +24,14 @@ async def publish_job(item_id: uuid.UUID):
         if not item.disclaimer_appended:
             item.text = (item.text or "") + f"\n\n{MEDICAL_DISCLAIMER}"
             item.disclaimer_appended = True
-            await session.commit()
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
 
-        # Mock target - in prod this would be a config list
-        target_chat_id = settings.bot.storage_channel_id # Using storage for test delivery
+        # Target Channel Delivery
+        target_chat_id = settings.bot.main_channel_id
 
         success = False
         for attempt in range(3):
@@ -47,7 +51,10 @@ async def publish_job(item_id: uuid.UUID):
                 PUBLISH_FAILED_MAX_RETRIES.format(id=str(item.id))
             )
 
-        await session.commit()
-    
+        try:
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
     await bot.session.close()
- Riverside is a 36 000+ member medical professional Telegram community. Professionalism is not optional. Security is not optional. Completeness is not optional.

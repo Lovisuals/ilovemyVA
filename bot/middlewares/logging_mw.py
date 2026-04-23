@@ -17,17 +17,17 @@ class LoggingMiddleware(BaseMiddleware):
         data: Dict[str, Any],
     ) -> Any:
         start_time = time.time()
-        
+
         user_id = "unknown"
         if event.message:
             user_id = event.message.from_user.id
         elif event.callback_query:
             user_id = event.callback_query.from_user.id
-            
+
         update_type = event.event_type
-        
+
         response = await handler(event, data)
-        
+
         duration = time.time() - start_time
         logger.info(
             "update_processed",
@@ -35,5 +35,5 @@ class LoggingMiddleware(BaseMiddleware):
             update_type=update_type,
             duration_ms=round(duration * 1000, 2)
         )
-        
+
         return response

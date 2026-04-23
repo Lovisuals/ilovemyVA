@@ -29,7 +29,7 @@ async def on_broadcast_start(query: CallbackQuery, bot_user: BotUser, state: FSM
     item_id = query.data.split(":")[1]
     await state.update_data(br_item_id=item_id, br_targets=[])
     await state.set_state(BroadcastTargetSelection.SELECTING_TARGETS)
-    
+
     kb = build_target_selector(item_id, LINKED_TARGETS, [])
     await query.message.edit_text("Select targets for broadcast:", reply_markup=kb)
     await query.answer()
@@ -39,15 +39,15 @@ async def on_target_toggle(query: CallbackQuery, state: FSMContext):
     parts = query.data.split(":")
     item_id = parts[1]
     chat_id = int(parts[2])
-    
+
     data = await state.get_data()
     selected = list(data["br_targets"])
-    
+
     if chat_id in selected:
         selected.remove(chat_id)
     else:
         selected.append(chat_id)
-        
+
     await state.update_data(br_targets=selected)
     kb = build_target_selector(item_id, LINKED_TARGETS, selected)
     await query.message.edit_reply_markup(reply_markup=kb)
@@ -55,15 +55,15 @@ async def on_target_toggle(query: CallbackQuery, state: FSMContext):
 
 @router.callback_query(BroadcastTargetSelection.SELECTING_TARGETS, F.data.startswith("brd_d:"))
 async def on_broadcast_done(
-    query: CallbackQuery, 
-    state: FSMContext, 
-    bot: Bot, 
+    query: CallbackQuery,
+    state: FSMContext,
+    bot: Bot,
     session: AsyncSession
 ):
     data = await state.get_data()
     item_id = uuid.UUID(data["br_item_id"])
     target_ids = data["br_targets"]
-    
+
     if not target_ids:
         await query.answer("Please select at least one target.")
         return
@@ -81,8 +81,7 @@ async def on_broadcast_done(
             count += 1
         except Exception:
             pass
-            
+
     await query.message.edit_text(BROADCAST_CONFIRMED.format(count=count))
     await state.clear()
     await query.answer()
- Riverside is a 36 000+ member medical professional Telegram community. Professionalism is not optional. Security is not optional. Completeness is not optional.

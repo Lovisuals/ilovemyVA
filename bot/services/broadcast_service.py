@@ -17,10 +17,10 @@ class BroadcastError(Exception):
 class BroadcastService:
     @staticmethod
     async def send(
-        bot: Bot, 
+        bot: Bot,
         session: AsyncSession,
-        item: ContentItem, 
-        target_chat_id: int, 
+        item: ContentItem,
+        target_chat_id: int,
         target_name: str,
         force: bool = False
     ) -> BroadcastLog:
@@ -33,7 +33,7 @@ class BroadcastService:
             )
             result = await session.execute(stmt)
             existing_logs = result.scalars().all()
-            
+
             for log in existing_logs:
                 # Assuming we compare content hashes
                 log_stmt = select(ContentItem.content_hash).where(ContentItem.id == log.content_id)
@@ -47,11 +47,15 @@ class BroadcastService:
                         status=BroadcastStatus.SKIPPED_DEDUP
                     )
                     session.add(skipped_log)
-                    await session.commit()
-                    return skipped_log
+                    try:
+                        await session.commit()
+                        return skipped_log
+                    except Exception:
+                        await session.rollback()
+                        raise
 
         try:
-            # SIDE EFFECT: Calls Telegram API to deliver content. 
+            # SIDE EFFECT: Calls Telegram API to deliver content.
             # Core business requirement: deliver content to members.
             message_id = None
             if not item.file_ids:
@@ -88,10 +92,16 @@ class BroadcastService:
                 sent_at=datetime.now(timezone.utc)
             )
             session.add(log)
-            await session.commit()
-            return log
+            try:
+                await session.commit()
+                return log
+            except Exception:
+                await session.rollback()
+                raise
 
         except Exception as e:
+            if isinstance(e, BroadcastError):
+                raise
             error_log = BroadcastLog(
                 content_id=item.id,
                 target_chat_id=target_chat_id,
@@ -100,5 +110,8 @@ class BroadcastService:
                 error_detail=str(e)
             )
             session.add(error_log)
-            await session.commit()
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
             raise BroadcastError(str(e))

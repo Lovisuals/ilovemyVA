@@ -18,7 +18,7 @@ class UserService:
         stmt_count = select(func.count()).select_from(BotUser)
         count_result = await session.execute(stmt_count)
         total_count = count_result.scalar() or 0
-        
+
         offset = (page - 1) * per_page
         stmt = select(BotUser).order_by(BotUser.joined_at.desc().nulls_last()).offset(offset).limit(per_page)
         result = await session.execute(stmt)
@@ -31,12 +31,16 @@ class UserService:
             raise ValueError("User not found")
         if user.role != UserRole.USER:
             raise ValueError("Only regular users can be promoted")
-            
+
         user.role = UserRole.ADMIN
         user.promoted_by = actor_id
-        await session.commit()
-        await session.refresh(user)
-        return user
+        try:
+            await session.commit()
+            await session.refresh(user)
+            return user
+        except Exception:
+            await session.rollback()
+            raise
 
     @staticmethod
     async def demote(session: AsyncSession, user_id: int) -> BotUser:
@@ -45,11 +49,15 @@ class UserService:
             raise ValueError("User not found")
         if user.role == UserRole.SUPERADMIN:
             raise ValueError("Cannot demote superadmin")
-            
+
         user.role = UserRole.USER
-        await session.commit()
-        await session.refresh(user)
-        return user
+        try:
+            await session.commit()
+            await session.refresh(user)
+            return user
+        except Exception:
+            await session.rollback()
+            raise
 
     @staticmethod
     async def deactivate(session: AsyncSession, user_id: int) -> BotUser:
@@ -58,9 +66,12 @@ class UserService:
             raise ValueError("User not found")
         if user.role == UserRole.SUPERADMIN:
             raise ValueError("Cannot deactivate superadmin")
-            
+
         user.is_active = False
-        await session.commit()
-        await session.refresh(user)
-        return user
- Riverside is a 36 000+ member medical professional Telegram community. Professionalism is not optional. Security is not optional. Completeness is not optional.
+        try:
+            await session.commit()
+            await session.refresh(user)
+            return user
+        except Exception:
+            await session.rollback()
+            raise

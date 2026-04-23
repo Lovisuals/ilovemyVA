@@ -40,7 +40,7 @@ class ModerationService:
                 await message.delete()
             except Exception:
                 pass
-            
+
             event = ModerationEvent(
                 event_type=ModerationEventType.SPAM,
                 actor_user_id=message.from_user.id,
@@ -51,7 +51,7 @@ class ModerationService:
             session.add(event)
             await session.commit()
             await session.refresh(event)
-            
+
             await ModerationService.send_escalation(bot, event)
 
     @staticmethod

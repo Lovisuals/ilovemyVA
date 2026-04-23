@@ -9,7 +9,7 @@ class ToneService:
     async def score(text: str) -> ToneResult:
         if not settings.ai_enabled:
             return ToneResult(score=1.0, flags=["ai_disabled"])
-            
+
         client = GeminiClient()
         try:
             return await client.score_tone(text)

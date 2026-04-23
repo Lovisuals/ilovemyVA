@@ -38,7 +38,7 @@ class RateLimitMiddleware(BaseMiddleware):
                 RateLimitEvent.window_start > window_start
             )
             result = await session.execute(stmt)
-            limit_event = result.scalar_one_with_none()
+            limit_event = result.scalar_one_or_none()
 
             if limit_event:
                 if limit_event.count >= 30:
@@ -55,7 +55,7 @@ class RateLimitMiddleware(BaseMiddleware):
                     count=1
                 )
                 session.add(limit_event)
-            
+
             await session.commit()
 
         return await handler(event, data)

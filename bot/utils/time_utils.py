@@ -19,11 +19,11 @@ def get_countdown(dt: datetime) -> str:
     diff = dt - now
     if diff.total_seconds() < 0:
         return "Expired"
-    
+
     days = diff.days
     hours, remainder = divmod(diff.seconds, 3600)
     minutes, _ = divmod(remainder, 60)
-    
+
     parts = []
     if days > 0:
         parts.append(f"{days}d")
@@ -31,5 +31,5 @@ def get_countdown(dt: datetime) -> str:
         parts.append(f"{hours}h")
     if minutes > 0:
         parts.append(f"{minutes}m")
-        
+
     return " ".join(parts) or "<1m"

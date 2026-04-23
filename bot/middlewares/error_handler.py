@@ -25,13 +25,13 @@ class ErrorHandlerMiddleware(BaseMiddleware):
         except Exception as e:
             error_trace = traceback.format_exc()
             logger.error("unhandled_exception", error=str(e), trace=error_trace)
-            
+
             user_id = None
             if event.message:
                 user_id = event.message.from_user.id
             elif event.callback_query:
                 user_id = event.callback_query.from_user.id
-                
+
             async with async_session() as session:
                 audit = AuditLog(
                     event_code="CRITICAL",
@@ -41,11 +41,11 @@ class ErrorHandlerMiddleware(BaseMiddleware):
                 )
                 session.add(audit)
                 await session.commit()
-                
+
             bot = data["bot"]
             await bot.send_message(
                 settings.bot.owner_id,
                 f"🚨 **CRITICAL ERROR**\n\nUser: {user_id}\nError: {str(e)}\n\nCheck logs for full traceback."
             )
-            
+
             return

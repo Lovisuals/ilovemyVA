@@ -44,7 +44,7 @@ class AuthMiddleware(BaseMiddleware):
         async with async_session() as session:
             stmt = select(BotUser).where(BotUser.id == user_id)
             result = await session.execute(stmt)
-            bot_user = result.scalar_one_with_none()
+            bot_user = result.scalar_one_or_none()
 
             if not bot_user:
                 role = UserRole.SUPERADMIN if user_id == settings.bot.owner_id else UserRole.PENDING
@@ -82,5 +82,5 @@ class AuthMiddleware(BaseMiddleware):
                     return
 
             data["bot_user"] = bot_user
-            data["session"] = session
-            return await handler(event, data)
+
+        return await handler(event, data)

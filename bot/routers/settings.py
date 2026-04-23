@@ -13,6 +13,5 @@ router = Router()
 async def cmd_settings(message: Message, bot_user: BotUser):
     if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
         return
-    
+
     await message.answer("⚙️ **Settings Panel**\n\n- Timezone: Africa/Lagos\n- AI: Enabled\n- Storage: Active")
- Riverside is a 36 000+ member medical professional Telegram community. Professionalism is not optional. Security is not optional. Completeness is not optional.
