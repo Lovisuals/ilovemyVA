@@ -58,7 +58,7 @@ def upgrade() -> None:
         sa.Column('published_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('tags', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
-        sa.Column('metadata', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column('content_metadata', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_content_items_bucket'), 'content_items', ['bucket'], unique=False)

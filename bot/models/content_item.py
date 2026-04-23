@@ -55,7 +55,7 @@ class ContentItem(Base):
     published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     tags: Mapped[List[str]] = mapped_column(JSONB, default=list)
-    metadata: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
+    content_metadata: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
 
     __table_args__ = (
         Index("ix_content_items_bucket_scheduled_at", "bucket", "scheduled_at"),
