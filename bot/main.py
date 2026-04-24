@@ -12,7 +12,7 @@ from alembic.config import Config
 from alembic import command
 
 from bot.config import settings
-from bot.strings import BOT_ONLINE, BOT_SHUTDOWN
+from bot.strings import BOT_ONLINE
 from bot.routers import onboarding, admin, user_management, buckets, drafting
 from bot.routers import editing, scheduling, broadcast, moderation
 from bot.routers import settings as settings_router
@@ -91,10 +91,6 @@ async def on_startup(bot: Bot, **kwargs):
 
 
 async def on_shutdown(bot: Bot, **kwargs):
-    try:
-        await bot.send_message(settings.bot.owner_id, BOT_SHUTDOWN)
-    except Exception:
-        pass
     scheduler = bot.get("scheduler")
     if scheduler:
         await scheduler.stop()
