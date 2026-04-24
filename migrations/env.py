@@ -32,11 +32,6 @@ def get_url():
     else:
         url += "?connect_timeout=10"
         
-    from urllib.parse import urlparse
-    parsed = urlparse(url)
-    safe_url = f"{parsed.scheme}://{parsed.username}:****@{parsed.hostname}:{parsed.port}{parsed.path}?{parsed.query}"
-    print(f"DEBUG: Migration target URL: {safe_url}")
-
     return url
 
 def run_migrations_offline() -> None:
