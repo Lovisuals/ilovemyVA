@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.models.content_item import ContentItem, ContentBucket
 
+
 class SchedulerService:
     @staticmethod
     async def register_job(
@@ -14,26 +15,22 @@ class SchedulerService:
         scheduler: AsyncScheduler,
         item_id: uuid.UUID,
         run_at: datetime,
-        recurrence: str
+        recurrence: str,
     ) -> str:
-        from bot.scheduler.jobs import publish_job
+        from bot.scheduler.jobs import publish_content_job
 
         job_id = str(item_id)
         await scheduler.add_schedule(
-            publish_job,
+            publish_content_job,
             DateTrigger(run_time=run_at),
             id=job_id,
-            args=[item_id]
+            args=[str(item_id)],
         )
 
-
-        stmt = (
-            select(ContentItem)
-            .where(ContentItem.id == item_id)
+        result = await session.execute(
+            select(ContentItem).where(ContentItem.id == item_id)
         )
-        result = await session.execute(stmt)
         item = result.scalar_one_or_none()
-
         if item:
             item.scheduler_job_id = job_id
             item.scheduled_at = run_at

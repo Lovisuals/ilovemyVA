@@ -23,6 +23,123 @@ DRAFT_PROMPT = (
     "Send your post content now — text, formatting, and hashtags all supported.\n\n"
     "Tap Cancel to go back."
 )
+
+_SEP = "─" * 28
+
+DRAFT_STEP1 = (
+    "✏️ New Post\n"
+    f"{_SEP}\n"
+    "Step 1 of 2 — Subject\n\n"
+    "Enter a headline for this post:"
+)
+DRAFT_STEP1_ERROR = (
+    "✏️ New Post\n"
+    f"{_SEP}\n"
+    "Step 1 of 2 — Subject\n\n"
+    "⚠️ {error}\n\n"
+    "Enter a headline for this post:"
+)
+DRAFT_STEP2 = (
+    "✏️ New Post\n"
+    f"{_SEP}\n"
+    "📌 {{subject}}\n"
+    f"{_SEP}\n"
+    "Step 2 of 2 — Body\n\n"
+    "Send the post content — text, formatting, hashtags:"
+)
+DRAFT_PREVIEW = (
+    "✏️ New Post — Preview\n"
+    f"{_SEP}\n"
+    "📌 {{subject}}\n\n"
+    "{{body}}\n"
+    f"{_SEP}\n"
+    "What would you like to do?"
+)
+DRAFT_SCHED_TYPE = (
+    "✏️ New Post — Schedule\n"
+    f"{_SEP}\n"
+    "📌 {{subject}}\n"
+    f"{_SEP}\n"
+    "Choose schedule type:"
+)
+DRAFT_TIME_PICK = (
+    "✏️ New Post — Time\n"
+    f"{_SEP}\n"
+    "📌 {{subject}}\n"
+    "📅 Recurring schedule\n"
+    f"{_SEP}\n"
+    "Choose posting time:"
+)
+DRAFT_CUSTOM_TIME = (
+    "✏️ New Post — Custom Time\n"
+    f"{_SEP}\n"
+    "📌 {{subject}}\n"
+    f"{_SEP}\n"
+    "Enter time in HH:MM format (24-hour):\n"
+    "Example: 09:30"
+)
+DRAFT_CUSTOM_TIME_ERROR = (
+    "✏️ New Post — Custom Time\n"
+    f"{_SEP}\n"
+    "⚠️ {{error}}\n\n"
+    "Enter time as HH:MM (e.g. 14:30):"
+)
+DRAFT_DAY_PICK = (
+    "✏️ New Post — Days\n"
+    f"{_SEP}\n"
+    "📌 {{subject}}\n"
+    "⏰ Every day at {{time_text}}\n"
+    f"{_SEP}\n"
+    "Which days should this post run?"
+)
+DRAFT_DATETIME_PICK = (
+    "✏️ New Post — Date & Time\n"
+    f"{_SEP}\n"
+    "📌 {{subject}}\n"
+    "📅 One-time post\n"
+    f"{_SEP}\n"
+    "When should this post go live?\n\n"
+    "Send date and time:\n"
+    "DD/MM/YYYY HH:MM"
+)
+DRAFT_DATETIME_ERROR = (
+    "✏️ New Post — Date & Time\n"
+    f"{_SEP}\n"
+    "⚠️ {{error}}\n\n"
+    "Send date and time:\n"
+    "DD/MM/YYYY HH:MM"
+)
+DRAFT_TARGETS = (
+    "✏️ New Post — Targets\n"
+    f"{_SEP}\n"
+    "📌 {{subject}}\n"
+    "{{schedule_line}}\n"
+    f"{_SEP}\n"
+    "Select where to send this post:"
+)
+DRAFT_NO_TARGETS = (
+    "⚠️ No connected groups or channels found.\n\n"
+    "Add this bot as an admin to your channel or group first, "
+    "then it will appear here automatically."
+)
+DRAFT_SAVED = "✅ Saved to Drafts."
+DRAFT_SCHEDULED_RECURRING = (
+    "✅ Scheduled!\n\n"
+    "📌 {subject}\n"
+    "⏰ Runs every {days_text} at {time_text}\n"
+    "📢 {target_count} destination(s)"
+)
+DRAFT_SCHEDULED_ONCE = (
+    "✅ Scheduled!\n\n"
+    "📌 {subject}\n"
+    "📅 Posts on {datetime_text}\n"
+    "📢 {target_count} destination(s)"
+)
+DRAFT_REPORT_HEADER = "📡 Broadcast Report\n" + _SEP + "\n"
+DRAFT_REPORT_ROW_OK = "✅ {title}"
+DRAFT_REPORT_ROW_FAIL = "❌ {title}\n   └ {error}"
+DRAFT_REPORT_FOOTER = "\n" + _SEP + "\nSent: {sent}  ·  Failed: {failed}"
+DRAFT_NO_SELECTION = "Select at least one target."
 SETTINGS_TEXT = (
     "⚙️ Settings\n\n"
     "Timezone:   Africa/Lagos\n"

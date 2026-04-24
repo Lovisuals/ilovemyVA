@@ -17,12 +17,24 @@ def build_item_actions(item_id: str, bucket: ContentBucket) -> InlineKeyboardMar
     builder = InlineKeyboardBuilder()
 
     if bucket == ContentBucket.DRAFTS:
-        builder.row(_btn("✍️ Edit", item_id, "edit"),      _btn("📅 Schedule", item_id, "schedule"))
-        builder.row(_btn("🚀 Broadcast", item_id, "broadcast"), _btn("🗑 Delete", item_id, "delete"))
+        builder.row(
+            InlineKeyboardButton(text="✍️ Edit",      callback_data=f"item_ed:{item_id}"),
+            InlineKeyboardButton(text="📅 Schedule",  callback_data=f"item_sc:{item_id}"),
+        )
+        builder.row(
+            InlineKeyboardButton(text="🚀 Broadcast", callback_data=f"item_br:{item_id}"),
+            _btn("🗑 Delete", item_id, "delete"),
+        )
     elif bucket == ContentBucket.SCHEDULED:
-        builder.row(_btn("❌ Unschedule", item_id, "unschedule"), _btn("🗑 Delete", item_id, "delete"))
+        builder.row(
+            InlineKeyboardButton(text="❌ Unschedule", callback_data=f"item_sc:{item_id}"),
+            _btn("🗑 Delete", item_id, "delete"),
+        )
     elif bucket == ContentBucket.PUBLISHED:
-        builder.row(_btn("♻️ Repost", item_id, "repost"), _btn("🗑 Delete", item_id, "delete"))
+        builder.row(
+            InlineKeyboardButton(text="♻️ Repost", callback_data=f"item_br:{item_id}"),
+            _btn("🗑 Delete", item_id, "delete"),
+        )
     else:
         builder.row(_btn("🗑 Delete", item_id, "delete"))
 

@@ -20,6 +20,7 @@ from bot.routers import menu as menu_router
 from bot.routers import persona as persona_router
 from bot.routers import faq as faq_router
 from bot.routers import welcome_config as welcome_router
+from bot.routers import chat_tracker as chat_tracker_router
 from bot.middlewares.auth import AuthMiddleware
 from bot.middlewares.db_session import DbSessionMiddleware
 from bot.middlewares.rate_limit import RateLimitMiddleware
@@ -42,9 +43,6 @@ def run_migrations():
 
 
 async def _deferred_startup(bot: Bot):
-    loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, run_migrations)
-
     try:
         from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats
         await bot.set_my_commands(
@@ -68,7 +66,7 @@ async def _deferred_startup(bot: Bot):
                 url=f"{settings.bot.webhook_url}/webhook/{quote(settings.bot.token, safe='')}",
                 secret_token=WEBHOOK_SECRET,
                 drop_pending_updates=True,
-                allowed_updates=["message", "callback_query", "channel_post", "chat_member"],
+                allowed_updates=["message", "callback_query", "channel_post", "chat_member", "my_chat_member"],
             )
         else:
             await bot.delete_webhook(drop_pending_updates=True)
@@ -125,9 +123,11 @@ class BotInjectionMiddleware(BaseMiddleware):
 
 
 def main():
+    run_migrations()
     bot = Bot(token=settings.bot.token)
     dp = Dispatcher()
     dp.include_routers(
+        chat_tracker_router.router,
         menu_router.router,
         persona_router.router,
         faq_router.router,

@@ -85,3 +85,22 @@ class PersonaAction(CallbackData, prefix="pers_a"):
 class FaqAction(CallbackData, prefix="faq_a"):
     entry_id: str
     action: str
+
+class PostAction(CallbackData, prefix="pa"):
+    action: str  # now | sched | draft | edit_subj | edit_body | cancel
+
+class SchedType(CallbackData, prefix="st"):
+    sched_type: str  # recurring | one_time | back
+
+class TimeSlot(CallbackData, prefix="tsl"):
+    slot: str  # always | 0600 | 0900 | 1200 | 1500 | 1800 | 2100 | custom | back
+
+class DayToggle(CallbackData, prefix="dtg"):
+    day: str  # mo|tu|we|th|fr|sa|su | everyday | weekdays | weekends | confirm | back
+
+class TargetToggle(CallbackData, prefix="ttg"):
+    action: str  # chat | all | none | confirm | back
+    chat_id: int = 0
+
+class RetryBroadcast(CallbackData, prefix="rbr"):
+    pass

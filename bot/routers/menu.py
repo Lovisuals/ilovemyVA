@@ -3,7 +3,6 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,9 +15,8 @@ from bot.models.content_item import ContentBucket, ContentItem
 from bot.services.bucket_service import BucketService
 from bot.services.persona_service import PersonaService
 from bot.services.user_service import UserService
-from bot.states.draft_states import DraftCreation
 from bot.strings import (
-    ADMIN_PANEL_HEADER, DRAFT_PROMPT, HELP_TEXT,
+    ADMIN_PANEL_HEADER, HELP_TEXT,
     MENU_ADMIN, MENU_PENDING, MENU_USER, SETTINGS_TEXT, STATS_TEXT,
 )
 
@@ -56,17 +54,6 @@ async def cmd_menu(message: Message, bot_user: BotUser):
 async def nav_menu(query: CallbackQuery, bot_user: BotUser, state: FSMContext):
     await _show_menu(query, bot_user, state)
 
-
-@router.callback_query(NavData.filter(F.section == "new"))
-async def nav_new(query: CallbackQuery, bot_user: BotUser, state: FSMContext):
-    if bot_user.role not in (UserRole.ADMIN, UserRole.SUPERADMIN):
-        await query.answer()
-        return
-    await state.set_state(DraftCreation.WAITING_CONTENT)
-    builder = InlineKeyboardBuilder()
-    builder.button(text="← Cancel", callback_data=NavData(section="menu").pack())
-    await query.message.edit_text(DRAFT_PROMPT, reply_markup=builder.as_markup())
-    await query.answer()
 
 
 @router.callback_query(NavData.filter(F.section == "content"))

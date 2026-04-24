@@ -44,6 +44,12 @@ class ContentItem(Base):
     tags: Mapped[List[str]] = mapped_column(JSONB, default=list)
     content_metadata: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
 
+    subject: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    sched_days: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    sched_time: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
+    post_type: Mapped[Optional[str]] = mapped_column(String(12), nullable=True, default="draft")
+    target_chat_ids: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     __table_args__ = (
         Index("ix_content_items_bucket_scheduled_at", "bucket", "scheduled_at"),
         Index("ix_content_items_created_by_created_at", "created_by", "created_at"),

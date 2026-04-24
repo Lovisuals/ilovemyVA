@@ -8,9 +8,10 @@ from bot.models.rate_limit import RateLimitEvent
 from bot.models.persona import BotPersona
 from bot.models.welcome_config import WelcomeConfig
 from bot.models.faq_entry import FaqEntry
+from bot.models.connected_chat import ConnectedChat
 
 __all__ = [
     "BotUser", "ContentItem", "BroadcastLog", "ModerationEvent",
     "AuditLog", "StorageRecord", "RateLimitEvent",
-    "BotPersona", "WelcomeConfig", "FaqEntry",
+    "BotPersona", "WelcomeConfig", "FaqEntry", "ConnectedChat",
 ]
