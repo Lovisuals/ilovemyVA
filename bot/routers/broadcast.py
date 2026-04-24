@@ -1,52 +1,99 @@
 import uuid
-from aiogram import Router, F
-from aiogram.types import CallbackQuery
+
+from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from bot.models.bot_user import BotUser, UserRole
-from bot.services.broadcast_service import BroadcastService
-from bot.keyboards.broadcast_kb import build_target_selector
-from bot.strings import BROADCAST_STARTED, INVALID_ACTION
+
 from bot.config import settings
+from bot.keyboards.broadcast_kb import build_target_selector
+from bot.keyboards.menu_kb import build_menu_row
+from bot.models.bot_user import BotUser, UserRole
+from bot.models.broadcast_log import BroadcastLog, BroadcastStatus
+from bot.models.content_item import ContentItem
+from bot.services.persona_service import PersonaService
+from bot.strings import BROADCAST_NO_PERSONA, BROADCAST_SENT, INVALID_ACTION
 
 router = Router()
+
 
 @router.callback_query(F.data.startswith("item_br:"))
 async def on_broadcast_start(query: CallbackQuery, bot_user: BotUser, state: FSMContext):
     if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
+        await query.answer()
         return
     item_id = query.data.split(":")[1]
     targets = [{"name": "Main Channel", "chat_id": settings.bot.main_channel_id}]
     await state.update_data(br_item_id=item_id, br_targets=targets, br_selected=[])
     kb = build_target_selector(item_id, targets, [])
-    await query.message.edit_text("Select broadcast targets:", reply_markup=kb)
+    await query.message.edit_text("📡 Select broadcast targets:", reply_markup=kb)
     await query.answer()
+
 
 @router.callback_query(F.data.startswith("br_tg:"))
 async def on_target_toggle(query: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     item_id = data["br_item_id"]
     targets = data["br_targets"]
-    selected = data["br_selected"]
+    selected = list(data["br_selected"])
     chat_id = int(query.data.split(":")[2])
     if chat_id in selected:
         selected.remove(chat_id)
     else:
         selected.append(chat_id)
     await state.update_data(br_selected=selected)
-    kb = build_target_selector(item_id, targets, selected)
-    await query.message.edit_reply_markup(reply_markup=kb)
+    await query.message.edit_reply_markup(
+        reply_markup=build_target_selector(item_id, targets, selected)
+    )
     await query.answer()
 
+
 @router.callback_query(F.data.startswith("br_dn:"))
-async def on_broadcast_confirm(query: CallbackQuery, state: FSMContext, session: AsyncSession, bot: object):
+async def on_broadcast_confirm(
+    query: CallbackQuery, state: FSMContext, session: AsyncSession, bot: Bot
+):
     data = await state.get_data()
     item_id = uuid.UUID(data["br_item_id"])
-    selected = data["br_selected"]
+    selected: list = data["br_selected"]
+
     if not selected:
-        await query.answer("Please select at least one target.")
+        await query.answer("Select at least one target.", show_alert=True)
         return
-    await BroadcastService.queue_broadcast(session, item_id, selected)
-    await query.message.edit_text(BROADCAST_STARTED)
+
+    result = await session.execute(select(ContentItem).where(ContentItem.id == item_id))
+    item = result.scalar_one_or_none()
+    if not item:
+        await query.answer(INVALID_ACTION, show_alert=True)
+        return
+
+    persona = await PersonaService.get_active(session)
+    text = PersonaService.apply_to_text(item.text or "", persona)
+
+    sent = 0
+    for chat_id in selected:
+        log = BroadcastLog(
+            content_id=item_id,
+            target_chat_id=chat_id,
+            status=BroadcastStatus.PENDING,
+        )
+        session.add(log)
+        try:
+            msg = await bot.send_message(chat_id, text)
+            log.status = BroadcastStatus.SENT
+            log.message_id = msg.message_id
+            sent += 1
+        except Exception as e:
+            log.status = BroadcastStatus.FAILED
+            log.error_detail = str(e)[:200]
+
+    await session.commit()
     await state.clear()
+
+    summary = (
+        BROADCAST_SENT.format(count=sent, persona=persona.name)
+        if persona
+        else BROADCAST_NO_PERSONA.format(count=sent)
+    )
+    await query.message.edit_text(summary, reply_markup=build_menu_row())
     await query.answer()

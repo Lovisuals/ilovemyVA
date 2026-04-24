@@ -1,23 +1,25 @@
-from aiogram import Router, F
+from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.callbacks import NavData
 from bot.keyboards.bucket_kb import build_bucket_list, build_bucket_panel
-from bot.keyboards.menu_kb import build_main_menu, build_menu_row, MENU_BTN
+from bot.keyboards.menu_kb import build_main_menu, build_menu_row
 from bot.keyboards.user_mgmt_kb import build_user_list
 from bot.models.bot_user import BotUser, UserRole
-from bot.models.content_item import ContentBucket
+from bot.models.content_item import ContentBucket, ContentItem
 from bot.services.bucket_service import BucketService
+from bot.services.persona_service import PersonaService
 from bot.services.user_service import UserService
 from bot.states.draft_states import DraftCreation
 from bot.strings import (
     ADMIN_PANEL_HEADER, DRAFT_PROMPT, HELP_TEXT,
-    MENU_ADMIN, MENU_PENDING, MENU_USER, SETTINGS_TEXT,
+    MENU_ADMIN, MENU_PENDING, MENU_USER, SETTINGS_TEXT, STATS_TEXT,
 )
 
 router = Router()
@@ -72,8 +74,7 @@ async def nav_content(query: CallbackQuery, bot_user: BotUser):
     if bot_user.role not in (UserRole.ADMIN, UserRole.SUPERADMIN):
         await query.answer()
         return
-    kb = build_bucket_list()
-    await query.message.edit_text("📂 Content Library\n\nSelect a bucket:", reply_markup=kb)
+    await query.message.edit_text("📂 Content Library\n\nSelect a bucket:", reply_markup=build_bucket_list())
     await query.answer()
 
 
@@ -107,9 +108,36 @@ async def nav_admin(query: CallbackQuery, bot_user: BotUser, session: AsyncSessi
     total_pages = (total + 9) // 10
     kb = build_bucket_panel(bucket.value, items, 1, max(1, total_pages))
     await query.message.edit_text(
-        ADMIN_PANEL_HEADER.format(bucket=bucket.value.capitalize()),
-        reply_markup=kb,
+        ADMIN_PANEL_HEADER.format(bucket=bucket.value.capitalize()), reply_markup=kb
     )
+    await query.answer()
+
+
+@router.callback_query(NavData.filter(F.section == "stats"))
+async def nav_stats(query: CallbackQuery, bot_user: BotUser, session: AsyncSession):
+    if bot_user.role not in (UserRole.ADMIN, UserRole.SUPERADMIN):
+        await query.answer()
+        return
+
+    counts: dict[str, int] = {}
+    for bucket in ContentBucket:
+        result = await session.execute(
+            select(func.count()).select_from(ContentItem).where(ContentItem.bucket == bucket)
+        )
+        counts[bucket.value] = result.scalar() or 0
+
+    _, total_users = await UserService.get_page(session, 1, 1)
+    persona = await PersonaService.get_active(session)
+
+    text = STATS_TEXT.format(
+        drafts=counts.get("drafts", 0),
+        scheduled=counts.get("scheduled", 0),
+        published=counts.get("published", 0),
+        archive=counts.get("archive", 0),
+        users=total_users,
+        persona=persona.name if persona else "None set",
+    )
+    await query.message.edit_text(text, reply_markup=build_menu_row())
     await query.answer()
 
 

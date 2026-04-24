@@ -73,3 +73,86 @@ INVALID_ACTION = "⚠️ The requested action could not be completed. Please ref
 MODERATION_RESOLVED = "✅ Moderation status updated: {res}"
 RATE_LIMITED = "⏳ Rate limit exceeded. Please wait one minute before attempting further actions."
 AI_FEATURE_DISABLED = "⚙️ AI features are not active. Add API keys to enable."
+
+PERSONA_LIST_HEADER = (
+    "🎭 Personas\n\n"
+    "The active persona signs every broadcast post, making it feel written by a real person.\n"
+    "Only one persona can be active at a time."
+)
+PERSONA_ENTER_NAME = (
+    "🎭 New Persona\n\n"
+    "Send the persona name — or name and title separated by  |  \n\n"
+    "Examples:\n"
+    "  Steve\n"
+    "  Zara | MedLocum Senior Editor\n"
+    "  Dr. Mark | Clinical Content Lead"
+)
+PERSONA_CREATED = "✅ Persona '{name}' created. Tap Activate to make it the active voice for broadcasts."
+PERSONA_ACTIVATED = "✅ Persona activated. All future broadcasts will be signed with this persona."
+PERSONA_DELETED = "🗑 Persona removed."
+PERSONA_DETAIL = (
+    "🎭 {name}\n"
+    "Title:      {title}\n"
+    "Signature:  {signature}\n"
+    "Status:     {status}"
+)
+
+FAQ_LIST_HEADER = (
+    "💬 Auto-Reply\n\n"
+    "When a group member sends a message containing a trigger phrase, "
+    "the bot replies instantly with the saved response."
+)
+FAQ_ENTER_TRIGGER = (
+    "💬 New Auto-Reply — Step 1 of 2\n\n"
+    "Send the trigger phrase (what members will type).\n\n"
+    "Examples:\n"
+    "  locum rates\n"
+    "  how to apply\n"
+    "  cme credits"
+)
+FAQ_ENTER_RESPONSE = (
+    "💬 New Auto-Reply — Step 2 of 2\n\n"
+    "Now send the reply the bot should send when that phrase is detected."
+)
+FAQ_CREATED = "✅ Auto-reply saved for trigger: '{trigger}'"
+FAQ_DELETED = "🗑 Auto-reply removed."
+FAQ_DETAIL = (
+    "💬 Auto-Reply\n\n"
+    "Trigger:    {trigger}\n"
+    "Match:      {match}\n"
+    "Status:     {status}\n\n"
+    "Response preview:\n{response}"
+)
+
+WELCOME_NONE_SET = (
+    "👋 Welcome Message\n\n"
+    "No welcome message configured yet.\n"
+    "Set one to greet new members automatically."
+)
+WELCOME_CURRENT = (
+    "👋 Welcome Message\n\n"
+    "Status:  {status}\n\n"
+    "Preview:\n{preview}"
+)
+WELCOME_ENTER_MESSAGE = (
+    "👋 Welcome Message\n\n"
+    "Send the welcome text. You can use:\n"
+    "  {name}      — member's display name\n"
+    "  {username}  — @handle or name\n"
+    "  {chat}      — channel/group title"
+)
+WELCOME_SAVED = "✅ Welcome message saved and active."
+WELCOME_ENABLED = "Welcome message enabled."
+WELCOME_DISABLED = "Welcome message paused."
+
+BROADCAST_SENT = "📡 Sent to {count} channel(s) as {persona}."
+BROADCAST_NO_PERSONA = "📡 Sent to {count} channel(s)."
+STATS_TEXT = (
+    "📊 Content Stats\n\n"
+    "Drafts:      {drafts}\n"
+    "Scheduled:   {scheduled}\n"
+    "Published:   {published}\n"
+    "Archived:    {archive}\n\n"
+    "Team:        {users} members\n"
+    "Active Persona: {persona}"
+)

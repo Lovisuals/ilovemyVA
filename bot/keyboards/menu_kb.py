@@ -15,10 +15,14 @@ def build_main_menu(role: UserRole) -> InlineKeyboardMarkup:
     if role in (UserRole.ADMIN, UserRole.SUPERADMIN):
         builder.button(text="✏️ New Draft",      callback_data=NavData(section="new").pack())
         builder.button(text="📂 Library",         callback_data=NavData(section="content").pack())
+        builder.button(text="🎭 Persona",         callback_data=NavData(section="persona").pack())
+        builder.button(text="💬 Auto-Reply",      callback_data=NavData(section="faq").pack())
+        builder.button(text="👋 Welcome",         callback_data=NavData(section="welcome").pack())
         builder.button(text="👥 Team",            callback_data=NavData(section="users").pack())
+        builder.button(text="📊 Stats",           callback_data=NavData(section="stats").pack())
         builder.button(text="⚙️ Settings",        callback_data=NavData(section="settings").pack())
-        builder.button(text="📊 Control Centre",  callback_data=NavData(section="admin").pack())
-        builder.adjust(2, 2, 1)
+        builder.button(text="🗂 Control Centre",  callback_data=NavData(section="admin").pack())
+        builder.adjust(2, 2, 2, 2, 1)
     elif role == UserRole.USER:
         builder.button(text="❓ Help & Commands", callback_data=NavData(section="help").pack())
         builder.adjust(1)

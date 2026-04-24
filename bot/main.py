@@ -17,6 +17,9 @@ from bot.routers import onboarding, admin, user_management, buckets, drafting
 from bot.routers import editing, scheduling, broadcast, moderation
 from bot.routers import settings as settings_router
 from bot.routers import menu as menu_router
+from bot.routers import persona as persona_router
+from bot.routers import faq as faq_router
+from bot.routers import welcome_config as welcome_router
 from bot.middlewares.auth import AuthMiddleware
 from bot.middlewares.db_session import DbSessionMiddleware
 from bot.middlewares.rate_limit import RateLimitMiddleware
@@ -65,7 +68,7 @@ async def _deferred_startup(bot: Bot):
                 url=f"{settings.bot.webhook_url}/webhook/{quote(settings.bot.token, safe='')}",
                 secret_token=WEBHOOK_SECRET,
                 drop_pending_updates=True,
-                allowed_updates=["message", "callback_query", "channel_post"],
+                allowed_updates=["message", "callback_query", "channel_post", "chat_member"],
             )
         else:
             await bot.delete_webhook(drop_pending_updates=True)
@@ -126,6 +129,9 @@ def main():
     dp = Dispatcher()
     dp.include_routers(
         menu_router.router,
+        persona_router.router,
+        faq_router.router,
+        welcome_router.router,
         onboarding.router, admin.router, user_management.router,
         buckets.router, drafting.router, editing.router,
         scheduling.router, broadcast.router, settings_router.router,

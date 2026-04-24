@@ -77,3 +77,11 @@ class Noop(CallbackData, prefix="noop"):
 
 class NavData(CallbackData, prefix="nav"):
     section: str
+
+class PersonaAction(CallbackData, prefix="pers_a"):
+    persona_id: str
+    action: str
+
+class FaqAction(CallbackData, prefix="faq_a"):
+    entry_id: str
+    action: str
