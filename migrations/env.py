@@ -23,15 +23,15 @@ def get_url():
     url = os.getenv("DATABASE_URL")
     if not url:
         raise RuntimeError("DATABASE_URL not set")
-    
+    # Normalise all known prefixes to plain psycopg2 (sync) format
+    for asyncpg_prefix in ("postgresql+asyncpg://", "postgres+asyncpg://"):
+        if url.startswith(asyncpg_prefix):
+            url = "postgresql://" + url[len(asyncpg_prefix):]
+            break
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
-    
-    if "?" in url:
-        url += "&connect_timeout=10"
-    else:
-        url += "?connect_timeout=10"
-        
+    sep = "&" if "?" in url else "?"
+    url += f"{sep}connect_timeout=10"
     return url
 
 def run_migrations_offline() -> None:
