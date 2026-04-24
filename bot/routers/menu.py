@@ -19,6 +19,9 @@ from bot.strings import (
     ADMIN_PANEL_HEADER, HELP_TEXT,
     MENU_ADMIN, MENU_PENDING, MENU_USER, SETTINGS_TEXT, STATS_TEXT,
 )
+from bot.keyboards.admin_kb import build_admin_dashboard
+from bot.keyboards.settings_kb import build_settings_panel
+from bot.services.system_service import SystemService
 
 router = Router()
 
@@ -28,7 +31,6 @@ _MENU_TEXT = {
     UserRole.USER: MENU_USER,
     UserRole.PENDING: MENU_PENDING,
 }
-
 
 async def _show_menu(target, bot_user: BotUser, state: FSMContext = None):
     if state:
@@ -44,17 +46,13 @@ async def _show_menu(target, bot_user: BotUser, state: FSMContext = None):
             pass
         await target.answer()
 
-
 @router.message(Command("menu"))
 async def cmd_menu(message: Message, bot_user: BotUser):
     await _show_menu(message, bot_user)
 
-
 @router.callback_query(NavData.filter(F.section == "menu"))
 async def nav_menu(query: CallbackQuery, bot_user: BotUser, state: FSMContext):
     await _show_menu(query, bot_user, state)
-
-
 
 @router.callback_query(NavData.filter(F.section == "content"))
 async def nav_content(query: CallbackQuery, bot_user: BotUser):
@@ -63,7 +61,6 @@ async def nav_content(query: CallbackQuery, bot_user: BotUser):
         return
     await query.message.edit_text("📂 Content Library\n\nSelect a bucket:", reply_markup=build_bucket_list())
     await query.answer()
-
 
 @router.callback_query(NavData.filter(F.section == "users"))
 async def nav_users(query: CallbackQuery, bot_user: BotUser, session: AsyncSession):
@@ -75,30 +72,46 @@ async def nav_users(query: CallbackQuery, bot_user: BotUser, session: AsyncSessi
     await query.message.edit_text("👥 Team Management", reply_markup=kb)
     await query.answer()
 
-
 @router.callback_query(NavData.filter(F.section == "settings"))
 async def nav_settings(query: CallbackQuery, bot_user: BotUser):
     if bot_user.role not in (UserRole.ADMIN, UserRole.SUPERADMIN):
         await query.answer()
         return
-    await query.message.edit_text(SETTINGS_TEXT, reply_markup=build_menu_row())
+    
+    ai_enabled = True
+    welcome_enabled = False
+    timezone = "Europe/London (UTC+1)"
+    
+    kb = build_settings_panel(ai_enabled, welcome_enabled, timezone)
+    await query.message.edit_text(
+        "⚙️ *System Settings*\n\nConfigure global bot behavior and integrations.",
+        reply_markup=kb,
+        parse_mode="Markdown"
+    )
     await query.answer()
-
 
 @router.callback_query(NavData.filter(F.section == "admin"))
 async def nav_admin(query: CallbackQuery, bot_user: BotUser, session: AsyncSession):
     if bot_user.role not in (UserRole.ADMIN, UserRole.SUPERADMIN):
         await query.answer()
         return
-    bucket = ContentBucket.DRAFTS
-    items, total = await BucketService.get_page(session, bucket, 1, 10)
-    total_pages = (total + 9) // 10
-    kb = build_bucket_panel(bucket.value, items, 1, max(1, total_pages))
-    await query.message.edit_text(
-        ADMIN_PANEL_HEADER.format(bucket=bucket.value.capitalize()), reply_markup=kb
+    
+    me = await query.bot.get_me()
+    stats = await SystemService.get_dashboard_data(session, me.username)
+    
+    text = (
+        "🕹 *Control Centre*\n\n"
+        f"🌐 *System:* {stats['db_status']} | 🤖 *@{stats['bot_username']}*\n"
+        f"📅 *Scheduled:* {stats['scheduled']} | 📝 *Drafts:* {stats['drafts']}\n"
+        f"👥 *Users:* {stats['users']} | 🏘 *Chats:* {stats['chats']}\n\n"
+        "*Recent Activity:*\n"
+        f"{stats['audit_trail']}\n"
+        f"🕒 _Pulse: {stats['timestamp']}_"
     )
+    
+    kb = build_admin_dashboard()
+    await query.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
     await query.answer()
-
 
 @router.callback_query(NavData.filter(F.section == "stats"))
 async def nav_stats(query: CallbackQuery, bot_user: BotUser, session: AsyncSession):
@@ -126,7 +139,6 @@ async def nav_stats(query: CallbackQuery, bot_user: BotUser, session: AsyncSessi
     )
     await query.message.edit_text(text, reply_markup=build_menu_row())
     await query.answer()
-
 
 @router.callback_query(NavData.filter(F.section == "help"))
 async def nav_help(query: CallbackQuery):

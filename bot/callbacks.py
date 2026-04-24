@@ -87,19 +87,19 @@ class FaqAction(CallbackData, prefix="faq_a"):
     action: str
 
 class PostAction(CallbackData, prefix="pa"):
-    action: str  # now | sched | draft | edit_subj | edit_body | cancel
+    action: str
 
 class SchedType(CallbackData, prefix="st"):
-    sched_type: str  # recurring | one_time | back
+    sched_type: str
 
 class TimeSlot(CallbackData, prefix="tsl"):
-    slot: str  # always | 0600 | 0900 | 1200 | 1500 | 1800 | 2100 | custom | back
+    slot: str
 
 class DayToggle(CallbackData, prefix="dtg"):
-    day: str  # mo|tu|we|th|fr|sa|su | everyday | weekdays | weekends | confirm | back
+    day: str
 
 class TargetToggle(CallbackData, prefix="ttg"):
-    action: str  # chat | all | none | confirm | back
+    action: str
     chat_id: int = 0
 
 class RetryBroadcast(CallbackData, prefix="rbr"):
@@ -107,4 +107,10 @@ class RetryBroadcast(CallbackData, prefix="rbr"):
 
 class GroupChatConfig(CallbackData, prefix="gcc"):
     chat_id: int
-    action: str  # view | toggle_mod | toggle_link | cycle_warn | edit_kw | toggle_welcome | edit_welcome
+    action: str
+
+class ControlAction(CallbackData, prefix="ctl"):
+    action: str
+
+class SettingsAction(CallbackData, prefix="set"):
+    action: str

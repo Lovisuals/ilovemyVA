@@ -9,15 +9,16 @@ from bot.states.draft_states import DraftEditing
 from bot.services.bucket_service import BucketService
 from bot.services.agent_service import AgentService
 from bot.keyboards.item_actions_kb import build_item_actions
+from bot.callbacks import ItemEdit
 
 router = Router()
 
-@router.callback_query(F.data.startswith("item_ed:"))
-async def on_item_edit_start(query: CallbackQuery, bot_user: BotUser, state: FSMContext):
+@router.callback_query(ItemEdit.filter())
+async def on_item_edit_start(query: CallbackQuery, callback_data: ItemEdit, bot_user: BotUser, state: FSMContext):
     if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
         return
 
-    item_id = query.data.split(":")[1]
+    item_id = callback_data.item_id
     await state.update_data(edit_item_id=item_id)
     await state.set_state(DraftEditing.SELECTING_FIELD)
 
@@ -52,5 +53,27 @@ async def on_edit_text_submit(message: Message, state: FSMContext, session: Asyn
 
         kb = build_item_actions(str(item.id), item.bucket.value)
         await message.answer(f"✅ Text updated successfully for item `{item_id}`", reply_markup=kb)
+
+    await state.clear()
+
+@router.callback_query(DraftEditing.SELECTING_FIELD, F.data == "edit_tags")
+async def on_edit_tags_start(query: CallbackQuery, state: FSMContext):
+    await state.set_state(DraftEditing.EDITING_TAGS)
+    await query.message.edit_text("Please send the new tags for this content item (comma-separated).")
+    await query.answer()
+
+@router.message(DraftEditing.EDITING_TAGS)
+async def on_edit_tags_submit(message: Message, state: FSMContext, session: AsyncSession):
+    data = await state.get_data()
+    item_id = uuid.UUID(data["edit_item_id"])
+
+    item = await BucketService.get_by_id(session, item_id)
+    if item:
+        tags = [t.strip() for t in message.text.split(",") if t.strip()]
+        item.tags = tags
+        await session.commit()
+
+        kb = build_item_actions(str(item.id), item.bucket.value)
+        await message.answer(f"✅ Tags updated successfully for item `{item_id}`", reply_markup=kb)
 
     await state.clear()
