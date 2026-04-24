@@ -6,7 +6,6 @@ Create Date: 2026-04-24
 
 """
 from alembic import op
-import sqlalchemy as sa
 
 revision = '0003'
 down_revision = '0002'
@@ -15,35 +14,41 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        'connected_chats',
-        sa.Column('chat_id', sa.BigInteger(), nullable=False),
-        sa.Column('title', sa.String(length=256), nullable=False),
-        sa.Column('username', sa.String(length=128), nullable=True),
-        sa.Column('chat_type', sa.String(length=16), nullable=False),
-        sa.Column('bot_status', sa.String(length=16), nullable=False),
-        sa.Column('is_broadcast_target', sa.Boolean(), nullable=False),
-        sa.Column('added_at', sa.DateTime(timezone=True), nullable=False),
-        sa.Column('last_active_at', sa.DateTime(timezone=True), nullable=True),
-        sa.PrimaryKeyConstraint('chat_id'),
+    # All statements use IF NOT EXISTS so this migration is safe to re-run
+    # if a previous attempt partially succeeded before rolling back.
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS connected_chats (
+            chat_id     BIGINT PRIMARY KEY,
+            title       VARCHAR(256) NOT NULL,
+            username    VARCHAR(128),
+            chat_type   VARCHAR(16)  NOT NULL,
+            bot_status  VARCHAR(16)  NOT NULL,
+            is_broadcast_target BOOLEAN NOT NULL DEFAULT true,
+            added_at    TIMESTAMPTZ  NOT NULL,
+            last_active_at TIMESTAMPTZ
+        )
+    """)
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_connected_chats_bot_status "
+        "ON connected_chats (bot_status)"
     )
-    op.create_index('ix_connected_chats_bot_status', 'connected_chats', ['bot_status'])
-    op.create_index('ix_connected_chats_is_target', 'connected_chats', ['is_broadcast_target'])
-
-    op.add_column('content_items', sa.Column('subject', sa.String(length=256), nullable=True))
-    op.add_column('content_items', sa.Column('sched_days', sa.String(length=64), nullable=True))
-    op.add_column('content_items', sa.Column('sched_time', sa.String(length=8), nullable=True))
-    op.add_column('content_items', sa.Column('post_type', sa.String(length=12), nullable=True))
-    op.add_column('content_items', sa.Column('target_chat_ids', sa.Text(), nullable=True))
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_connected_chats_is_target "
+        "ON connected_chats (is_broadcast_target)"
+    )
+    op.execute("ALTER TABLE content_items ADD COLUMN IF NOT EXISTS subject      VARCHAR(256)")
+    op.execute("ALTER TABLE content_items ADD COLUMN IF NOT EXISTS sched_days   VARCHAR(64)")
+    op.execute("ALTER TABLE content_items ADD COLUMN IF NOT EXISTS sched_time   VARCHAR(8)")
+    op.execute("ALTER TABLE content_items ADD COLUMN IF NOT EXISTS post_type    VARCHAR(12)")
+    op.execute("ALTER TABLE content_items ADD COLUMN IF NOT EXISTS target_chat_ids TEXT")
 
 
 def downgrade() -> None:
-    op.drop_column('content_items', 'target_chat_ids')
-    op.drop_column('content_items', 'post_type')
-    op.drop_column('content_items', 'sched_time')
-    op.drop_column('content_items', 'sched_days')
-    op.drop_column('content_items', 'subject')
-
-    op.drop_index('ix_connected_chats_is_target', table_name='connected_chats')
-    op.drop_index('ix_connected_chats_bot_status', table_name='connected_chats')
-    op.drop_table('connected_chats')
+    op.execute("ALTER TABLE content_items DROP COLUMN IF EXISTS target_chat_ids")
+    op.execute("ALTER TABLE content_items DROP COLUMN IF EXISTS post_type")
+    op.execute("ALTER TABLE content_items DROP COLUMN IF EXISTS sched_time")
+    op.execute("ALTER TABLE content_items DROP COLUMN IF EXISTS sched_days")
+    op.execute("ALTER TABLE content_items DROP COLUMN IF EXISTS subject")
+    op.execute("DROP INDEX IF EXISTS ix_connected_chats_is_target")
+    op.execute("DROP INDEX IF EXISTS ix_connected_chats_bot_status")
+    op.execute("DROP TABLE IF EXISTS connected_chats")

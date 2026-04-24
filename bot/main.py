@@ -39,7 +39,7 @@ def run_migrations():
         cfg = Config("alembic.ini")
         command.upgrade(cfg, "head")
     except Exception as e:
-        logger.warning("Migration error (non-blocking): %s", e)
+        logger.error("Migration failed — bot may be unstable: %s", e, exc_info=True)
 
 
 async def _deferred_startup(bot: Bot):
