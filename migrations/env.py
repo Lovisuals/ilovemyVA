@@ -1,7 +1,6 @@
 import os
 import sys
 from logging.config import fileConfig
-import sqlalchemy as sa
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
@@ -49,14 +48,16 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     configuration = config.get_section(config.config_ini_section, {})
     configuration["sqlalchemy.url"] = get_url()
+    # lock_timeout via connect_args so it is set before any transaction starts,
+    # avoiding SA 2.0 autobegin interference with Alembic's transaction management.
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args={"options": "-c lock_timeout=30000"},
     )
 
     with connectable.connect() as connection:
-        connection.execute(sa.text("SET lock_timeout = '30s'"))
         context.configure(connection=connection, target_metadata=target_metadata)
         with context.begin_transaction():
             context.run_migrations()
