@@ -21,6 +21,8 @@ from bot.routers import persona as persona_router
 from bot.routers import faq as faq_router
 from bot.routers import welcome_config as welcome_router
 from bot.routers import chat_tracker as chat_tracker_router
+from bot.routers import automod as automod_router
+from bot.routers import group_admin as group_admin_router
 from bot.middlewares.auth import AuthMiddleware
 from bot.middlewares.db_session import DbSessionMiddleware
 from bot.middlewares.rate_limit import RateLimitMiddleware
@@ -124,6 +126,8 @@ def main():
     dp = Dispatcher()
     dp.include_routers(
         chat_tracker_router.router,
+        automod_router.router,
+        group_admin_router.router,
         menu_router.router,
         persona_router.router,
         faq_router.router,

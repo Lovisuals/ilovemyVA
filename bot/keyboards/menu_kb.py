@@ -17,7 +17,7 @@ def build_main_menu(role: UserRole) -> InlineKeyboardMarkup:
         builder.button(text="📂 Library",         callback_data=NavData(section="content").pack())
         builder.button(text="🎭 Persona",         callback_data=NavData(section="persona").pack())
         builder.button(text="💬 Auto-Reply",      callback_data=NavData(section="faq").pack())
-        builder.button(text="👋 Welcome",         callback_data=NavData(section="welcome").pack())
+        builder.button(text="🏘 Groups",          callback_data=NavData(section="groups").pack())
         builder.button(text="👥 Team",            callback_data=NavData(section="users").pack())
         builder.button(text="📊 Stats",           callback_data=NavData(section="stats").pack())
         builder.button(text="⚙️ Settings",        callback_data=NavData(section="settings").pack())

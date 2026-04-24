@@ -1,20 +1,19 @@
 from aiogram import Bot, F, Router
-from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, ChatMemberUpdated, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.callbacks import NavData
 from bot.config import settings
-from bot.keyboards.menu_kb import MENU_BTN, build_menu_row
+from bot.keyboards.menu_kb import build_menu_row
 from bot.models.bot_user import BotUser, UserRole
 from bot.models.welcome_config import WelcomeConfig
 from bot.states.feature_states import WelcomeSetup
 from bot.strings import (
-    WELCOME_CURRENT, WELCOME_DISABLED, WELCOME_ENABLED,
-    WELCOME_ENTER_MESSAGE, WELCOME_NONE_SET, WELCOME_SAVED,
+    WELCOME_DISABLED, WELCOME_ENABLED,
+    WELCOME_ENTER_MESSAGE, WELCOME_SAVED,
 )
 
 router = Router()
@@ -29,38 +28,13 @@ async def _get_config(session: AsyncSession, chat_id: int):
 
 @router.callback_query(NavData.filter(F.section == "welcome"))
 async def nav_welcome(query: CallbackQuery, bot_user: BotUser, session: AsyncSession):
+    """Legacy welcome entry — redirect to the Groups panel which handles per-chat welcome."""
     if bot_user.role not in (UserRole.ADMIN, UserRole.SUPERADMIN):
         await query.answer()
         return
-    config = await _get_config(session, settings.bot.main_channel_id)
-    builder = InlineKeyboardBuilder()
-    if config:
-        builder.button(
-            text="✏️ Edit Message",
-            callback_data=NavData(section="welcome_edit").pack(),
-        )
-        label = "⏸ Disable" if config.is_active else "▶️ Enable"
-        builder.button(
-            text=label,
-            callback_data=NavData(section="welcome_toggle").pack(),
-        )
-        builder.adjust(2)
-        builder.row(MENU_BTN)
-        status = "Active ✅" if config.is_active else "Paused ⏸"
-        preview = config.message[:150] + ("…" if len(config.message) > 150 else "")
-        text = WELCOME_CURRENT.format(status=status, preview=preview)
-    else:
-        builder.button(
-            text="➕ Set Welcome Message",
-            callback_data=NavData(section="welcome_edit").pack(),
-        )
-        builder.row(MENU_BTN)
-        text = WELCOME_NONE_SET
-    try:
-        await query.message.edit_text(text, reply_markup=builder.as_markup())
-    except TelegramBadRequest:
-        pass
-    await query.answer()
+    # Reuse the groups nav handler by forwarding a synthetic NavData
+    from bot.routers.group_admin import nav_groups  # local import avoids circular
+    await nav_groups(query, bot_user, session)
 
 
 @router.callback_query(NavData.filter(F.section == "welcome_edit"))
@@ -79,18 +53,20 @@ async def welcome_edit_start(query: CallbackQuery, bot_user: BotUser, state: FSM
 async def welcome_message_received(
     message: Message, bot_user: BotUser, state: FSMContext, session: AsyncSession
 ):
+    data    = await state.get_data()
+    # welcome_chat_id is set by group_admin.py; fall back to main channel for the
+    # legacy welcome config flow accessed directly from the main menu.
+    chat_id = data.get("welcome_chat_id") or settings.bot.main_channel_id
     await state.clear()
-    config = await _get_config(session, settings.bot.main_channel_id)
+    config  = await _get_config(session, chat_id)
     if config:
-        config.message = message.text
-        config.is_active = True
+        config.message    = message.text
+        config.is_active  = True
         config.created_by = bot_user.id
     else:
         session.add(WelcomeConfig(
-            chat_id=settings.bot.main_channel_id,
-            message=message.text,
-            is_active=True,
-            created_by=bot_user.id,
+            chat_id=chat_id, message=message.text,
+            is_active=True, created_by=bot_user.id,
         ))
     await session.commit()
     await message.answer(WELCOME_SAVED, reply_markup=build_menu_row())
@@ -109,6 +85,7 @@ async def welcome_toggle(query: CallbackQuery, session: AsyncSession):
 
 @router.chat_member(F.new_chat_member.status.in_({"member"}))
 async def on_new_member(update: ChatMemberUpdated, bot: Bot, session: AsyncSession):
+    # Per-chat config — no longer hardcoded to main_channel_id
     config = await _get_config(session, update.chat.id)
     if not config or not config.is_active:
         return

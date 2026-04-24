@@ -104,3 +104,7 @@ class TargetToggle(CallbackData, prefix="ttg"):
 
 class RetryBroadcast(CallbackData, prefix="rbr"):
     pass
+
+class GroupChatConfig(CallbackData, prefix="gcc"):
+    chat_id: int
+    action: str  # view | toggle_mod | toggle_link | cycle_warn | edit_kw | toggle_welcome | edit_welcome

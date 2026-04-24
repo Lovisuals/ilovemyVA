@@ -12,3 +12,7 @@ class FaqCreation(StatesGroup):
 
 class WelcomeSetup(StatesGroup):
     ENTERING_MESSAGE = State()
+
+
+class GroupKwSetup(StatesGroup):
+    ENTERING_KEYWORDS = State()

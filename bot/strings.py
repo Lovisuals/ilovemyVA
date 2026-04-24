@@ -262,6 +262,33 @@ WELCOME_SAVED = "✅ Welcome message saved and active."
 WELCOME_ENABLED = "Welcome message enabled."
 WELCOME_DISABLED = "Welcome message paused."
 
+GROUP_SETTINGS_LIST = (
+    "🏘 Groups & Channels\n\n"
+    "Select a group or channel to configure its welcome message, "
+    "moderation rules, and auto-mod settings."
+)
+GROUP_PANEL_EMPTY = (
+    "🏘 No groups or channels connected yet.\n\n"
+    "Add the bot to a group or channel as an admin and it will appear here."
+)
+GROUP_PANEL = (
+    "🏘 {name}\n"
+    "─────────────────────────────\n"
+    "Moderation:   {mod}\n"
+    "Link filter:  {links}\n"
+    "Warn limit:   {warn_limit} warnings → removed\n"
+    "Banned words: {kw_count} term(s)\n\n"
+    "Welcome msg:  {welcome}\n"
+    "Preview:      {welcome_preview}"
+)
+GROUP_KW_ENTER = (
+    "🚫 Banned Words\n\n"
+    "Send a comma-separated list of words to auto-delete and warn on.\n\n"
+    "Example:  spam, casino, crypto, click here\n\n"
+    "Send a single dash  -  to clear the list."
+)
+GROUP_KW_SAVED = "✅ Banned word list updated ({count} term(s) active)."
+
 BROADCAST_SENT = "📡 Sent to {count} channel(s) as {persona}."
 BROADCAST_NO_PERSONA = "📡 Sent to {count} channel(s)."
 STATS_TEXT = (
@@ -273,3 +300,4 @@ STATS_TEXT = (
     "Team:        {users} members\n"
     "Active Persona: {persona}"
 )
+
