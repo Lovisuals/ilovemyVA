@@ -74,3 +74,6 @@ class ModerationResolve(CallbackData, prefix="mod_r"):
 
 class Noop(CallbackData, prefix="noop"):
     pass
+
+class NavData(CallbackData, prefix="nav"):
+    section: str

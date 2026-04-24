@@ -16,6 +16,7 @@ from bot.strings import BOT_ONLINE, BOT_SHUTDOWN
 from bot.routers import onboarding, admin, user_management, buckets, drafting
 from bot.routers import editing, scheduling, broadcast, moderation
 from bot.routers import settings as settings_router
+from bot.routers import menu as menu_router
 from bot.middlewares.auth import AuthMiddleware
 from bot.middlewares.db_session import DbSessionMiddleware
 from bot.middlewares.rate_limit import RateLimitMiddleware
@@ -40,6 +41,23 @@ def run_migrations():
 async def _deferred_startup(bot: Bot):
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(None, run_migrations)
+
+    try:
+        from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats
+        await bot.set_my_commands(
+            [
+                BotCommand(command="start",    description="Open main menu"),
+                BotCommand(command="menu",     description="Main menu"),
+                BotCommand(command="new",      description="Create a new draft"),
+                BotCommand(command="content",  description="Content library"),
+                BotCommand(command="users",    description="Manage team"),
+                BotCommand(command="settings", description="Settings"),
+                BotCommand(command="admin",    description="Control centre"),
+            ],
+            scope=BotCommandScopeAllPrivateChats(),
+        )
+    except Exception as e:
+        logger.warning("Failed to register commands: %s", e)
 
     try:
         if settings.bot.webhook_url:
@@ -107,6 +125,7 @@ def main():
     bot = Bot(token=settings.bot.token)
     dp = Dispatcher()
     dp.include_routers(
+        menu_router.router,
         onboarding.router, admin.router, user_management.router,
         buckets.router, drafting.router, editing.router,
         scheduling.router, broadcast.router, settings_router.router,

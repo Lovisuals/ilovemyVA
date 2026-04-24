@@ -1,9 +1,45 @@
-WELCOME_SUPERADMIN = "👑 Welcome back, Superadmin! Use /admin to access the control center."
-WELCOME_ADMIN = "🛡 Welcome back, Admin! Use /admin to manage content and users."
-WELCOME_USER = "✅ Welcome back! You can now browse content and interact with the MedLocum platform."
+WELCOME_SUPERADMIN = "👑 Welcome back, Superadmin."
+WELCOME_ADMIN = "🛡 Welcome back, Admin."
+WELCOME_USER = "✅ Welcome back!"
 WELCOME_GUEST = "👋 Welcome to MedLocum. Please send your access code to complete verification."
-CODE_ACCEPTED = "✅ Verification successful. You now have full access to the MedLocum platform. Use /admin to browse clinical resources if you are an admin."
-WELCOME_PENDING = "⚕️ Welcome to MedLocum. Your account is currently pending verification. Please provide your identification details to an administrator to receive your access code."
+CODE_ACCEPTED = "✅ Verification successful. You now have full access to the MedLocum platform."
+WELCOME_PENDING = "⚕️ Welcome to MedLocum. Your account is currently pending verification. Please share your details with an administrator to receive your access code."
+
+MENU_ADMIN = (
+    "🗂 MedLocum Content Hub\n\n"
+    "Manage your content pipeline, team, and broadcasts from one place."
+)
+MENU_USER = (
+    "✅ MedLocum Content Hub\n\n"
+    "You have full platform access."
+)
+MENU_PENDING = (
+    "⚕️ MedLocum Content Hub\n\n"
+    "Your account is pending verification.\n"
+    "Contact an administrator to receive your access code."
+)
+DRAFT_PROMPT = (
+    "✏️ New Draft\n\n"
+    "Send your post content now — text, formatting, and hashtags all supported.\n\n"
+    "Tap Cancel to go back."
+)
+SETTINGS_TEXT = (
+    "⚙️ Settings\n\n"
+    "Timezone:   Africa/Lagos\n"
+    "AI Review:  Enabled\n"
+    "Storage:    Active\n"
+    "Version:    1.4"
+)
+HELP_TEXT = (
+    "ℹ️ MedLocum Content Bot — Commands\n\n"
+    "/start      Open main menu\n"
+    "/menu       Main menu\n"
+    "/new        Create a new draft\n"
+    "/content    Content library\n"
+    "/users      Manage team\n"
+    "/settings   Bot settings\n"
+    "/admin      Control centre"
+)
 ADMIN_CODE_FOR_USER = "🔑 Verification code generated for the user. Please share this code with them: `{code}`. This code will expire in 10 minutes."
 ONBOARD_SUCCESS = "✅ Verification successful. You now have full access to the MedLocum content platform. Use /admin to browse clinical resources."
 INVALID_CODE = "❌ The verification code provided is incorrect. Please ensure you have entered the code exactly as provided by the administrator."

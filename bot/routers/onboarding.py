@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.callbacks import OnboardGen
 from bot.config import settings
+from bot.keyboards.menu_kb import build_main_menu
 from bot.models.bot_user import BotUser, UserRole
 from bot.services.user_service import UserService
 from bot.strings import (
@@ -16,6 +17,7 @@ from bot.strings import (
     INVALID_CODE, NEW_USER_NOTIFICATION,
     WELCOME_ADMIN, WELCOME_GUEST, WELCOME_PENDING,
     WELCOME_SUPERADMIN, WELCOME_USER,
+    MENU_ADMIN, MENU_USER,
 )
 
 router = Router()
@@ -25,10 +27,13 @@ router = Router()
 async def cmd_start(message: Message, bot_user: BotUser, is_new_user: bool = False):
     if bot_user.role == UserRole.SUPERADMIN:
         await message.answer(WELCOME_SUPERADMIN)
+        await message.answer(MENU_ADMIN, reply_markup=build_main_menu(bot_user.role))
     elif bot_user.role == UserRole.ADMIN:
         await message.answer(WELCOME_ADMIN)
+        await message.answer(MENU_ADMIN, reply_markup=build_main_menu(bot_user.role))
     elif bot_user.role == UserRole.USER:
         await message.answer(WELCOME_USER)
+        await message.answer(MENU_USER, reply_markup=build_main_menu(bot_user.role))
     else:
         if bot_user.verification_code:
             await message.answer(WELCOME_GUEST)
@@ -72,6 +77,7 @@ async def on_code_received(message: Message, bot_user: BotUser, session: AsyncSe
     bot_user.joined_at = datetime.now(timezone.utc)
     await session.commit()
     await message.answer(CODE_ACCEPTED)
+    await message.answer(MENU_USER, reply_markup=build_main_menu(UserRole.USER))
 
 
 @router.callback_query(OnboardGen.filter())
