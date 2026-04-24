@@ -38,7 +38,8 @@ def run_migrations():
 
 
 async def _deferred_startup(bot: Bot):
-    run_migrations()
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, run_migrations)
 
     try:
         if settings.bot.webhook_url:
@@ -121,6 +122,7 @@ def main():
     dp.shutdown.register(on_shutdown)
 
     if settings.bot.webhook_url:
+        logger.info("Starting in webhook mode on port %s", settings.bot.port)
         app = web.Application()
         app.router.add_get("/health", health_check)
         SimpleRequestHandler(
@@ -129,6 +131,7 @@ def main():
         setup_application(app, dp, bot=bot)
         web.run_app(app, host="0.0.0.0", port=settings.bot.port)
     else:
+        logger.info("Starting in polling mode")
         asyncio.run(dp.start_polling(bot))
 
 

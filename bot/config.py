@@ -12,6 +12,16 @@ class BotSettings(BaseSettings):
     storage_channel_id: int = Field(..., alias="STORAGE_CHANNEL_ID")
     main_channel_id: int = Field(..., alias="MAIN_CHANNEL_ID")
 
+    @field_validator("webhook_url", mode="before")
+    @classmethod
+    def resolve_webhook_url(cls, v):
+        if v:
+            return v
+        domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
+        if domain:
+            return f"https://{domain}"
+        return None
+
     @field_validator("admin_ids", mode="before")
     @classmethod
     def parse_admin_ids(cls, v):
