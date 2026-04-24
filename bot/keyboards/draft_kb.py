@@ -37,7 +37,6 @@ def _cancel_btn() -> InlineKeyboardButton:
 
 
 def build_step1_kb() -> InlineKeyboardMarkup:
-    """Entry keyboard: open Mini App editor if available, else plain text flow."""
     builder = InlineKeyboardBuilder()
     url = _editor_url()
     if url:
@@ -54,7 +53,6 @@ def build_step1_kb() -> InlineKeyboardMarkup:
 
 
 def build_step2_kb() -> InlineKeyboardMarkup:
-    """Body-entry keyboard (text mode fallback)."""
     builder = InlineKeyboardBuilder()
     url = _editor_url()
     if url:
@@ -69,7 +67,6 @@ def build_step2_kb() -> InlineKeyboardMarkup:
 
 
 def build_action_kb() -> InlineKeyboardMarkup:
-    """Post-action keyboard after content is ready."""
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="⚡ Post Now",   callback_data=PostAction(action="now").pack()),
@@ -80,7 +77,6 @@ def build_action_kb() -> InlineKeyboardMarkup:
     )
     url = _editor_url()
     if url:
-        # Single "Edit in App" re-opens the editor for both subject and body
         builder.row(
             InlineKeyboardButton(text="📝 Edit in App",  web_app=WebAppInfo(url=url)),
             InlineKeyboardButton(text="✏️ Subject",      callback_data=PostAction(action="edit_subj").pack()),

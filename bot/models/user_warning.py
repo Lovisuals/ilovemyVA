@@ -8,7 +8,6 @@ from database.base import Base
 class UserWarning(Base):
     __tablename__ = "user_warnings"
 
-    # Composite PK: one row per (chat, user)
     chat_id:        Mapped[int]           = mapped_column(BigInteger, primary_key=True)
     user_id:        Mapped[int]           = mapped_column(BigInteger, primary_key=True)
     warn_count:     Mapped[int]           = mapped_column(Integer, default=0, nullable=False)

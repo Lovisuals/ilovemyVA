@@ -14,8 +14,6 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # All statements use IF NOT EXISTS so this migration is safe to re-run
-    # if a previous attempt partially succeeded before rolling back.
     op.execute("""
         CREATE TABLE IF NOT EXISTS connected_chats (
             chat_id     BIGINT PRIMARY KEY,

@@ -28,12 +28,10 @@ async def _get_config(session: AsyncSession, chat_id: int):
 
 @router.callback_query(NavData.filter(F.section == "welcome"))
 async def nav_welcome(query: CallbackQuery, bot_user: BotUser, session: AsyncSession):
-    """Legacy welcome entry — redirect to the Groups panel which handles per-chat welcome."""
     if bot_user.role not in (UserRole.ADMIN, UserRole.SUPERADMIN):
         await query.answer()
         return
-    # Reuse the groups nav handler by forwarding a synthetic NavData
-    from bot.routers.group_admin import nav_groups  # local import avoids circular
+    from bot.routers.group_admin import nav_groups
     await nav_groups(query, bot_user, session)
 
 
@@ -54,8 +52,6 @@ async def welcome_message_received(
     message: Message, bot_user: BotUser, state: FSMContext, session: AsyncSession
 ):
     data    = await state.get_data()
-    # welcome_chat_id is set by group_admin.py; fall back to main channel for the
-    # legacy welcome config flow accessed directly from the main menu.
     chat_id = data.get("welcome_chat_id") or settings.bot.main_channel_id
     await state.clear()
     config  = await _get_config(session, chat_id)
@@ -85,7 +81,6 @@ async def welcome_toggle(query: CallbackQuery, session: AsyncSession):
 
 @router.chat_member(F.new_chat_member.status.in_({"member"}))
 async def on_new_member(update: ChatMemberUpdated, bot: Bot, session: AsyncSession):
-    # Per-chat config — no longer hardcoded to main_channel_id
     config = await _get_config(session, update.chat.id)
     if not config or not config.is_active:
         return

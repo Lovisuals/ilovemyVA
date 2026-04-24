@@ -1,8 +1,3 @@
-"""
-Two responsibilities:
-  1. In-group admin commands: /warn /unwarn /warnings /kick /ban
-  2. Per-group settings UI (in private chat): welcome, moderation, keywords
-"""
 import json
 import logging
 
@@ -30,8 +25,6 @@ from bot.strings import (
 logger = logging.getLogger(__name__)
 router = Router()
 
-
-# ── helpers ───────────────────────────────────────────────────────────────────
 
 async def _require_admin(bot: Bot, chat_id: int, user_id: int) -> bool:
     try:
@@ -101,8 +94,6 @@ async def _show_panel(bot_or_query, chat_id: int, session: AsyncSession, edit: b
         pass
 
 
-# ── private-chat admin UI ──────────────────────────────────────────────────────
-
 @router.callback_query(NavData.filter(F.section == "groups"))
 async def nav_groups(query: CallbackQuery, bot_user: BotUser, session: AsyncSession):
     if bot_user.role not in (UserRole.ADMIN, UserRole.SUPERADMIN):
@@ -168,7 +159,7 @@ async def cycle_warn(query: CallbackQuery, callback_data: GroupChatConfig,
     if bot_user.role not in (UserRole.ADMIN, UserRole.SUPERADMIN):
         await query.answer(); return
     gs    = await GroupSettingsService.get_or_default(session, callback_data.chat_id)
-    new_limit = (gs.warn_limit % 5) + 1  # cycles 1→2→3→4→5→1
+    new_limit = (gs.warn_limit % 5) + 1
     await GroupSettingsService.upsert(session, callback_data.chat_id, warn_limit=new_limit)
     await _show_panel(query, callback_data.chat_id, session, edit=True)
     await query.answer(f"Warn limit set to {new_limit}")
@@ -230,8 +221,6 @@ async def edit_welcome_start(query: CallbackQuery, callback_data: GroupChatConfi
     )
     await query.answer()
 
-
-# ── in-group commands (admin only) ────────────────────────────────────────────
 
 @router.message(Command("warn"), F.chat.type.in_({"group", "supergroup"}))
 async def cmd_warn(message: Message, bot: Bot, session: AsyncSession):

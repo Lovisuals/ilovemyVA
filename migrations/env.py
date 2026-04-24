@@ -22,7 +22,6 @@ def get_url():
     url = os.getenv("DATABASE_URL")
     if not url:
         raise RuntimeError("DATABASE_URL not set")
-    # Normalise all known prefixes to plain psycopg2 (sync) format
     for asyncpg_prefix in ("postgresql+asyncpg://", "postgres+asyncpg://"):
         if url.startswith(asyncpg_prefix):
             url = "postgresql://" + url[len(asyncpg_prefix):]
@@ -48,8 +47,6 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     configuration = config.get_section(config.config_ini_section, {})
     configuration["sqlalchemy.url"] = get_url()
-    # lock_timeout via connect_args so it is set before any transaction starts,
-    # avoiding SA 2.0 autobegin interference with Alembic's transaction management.
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",

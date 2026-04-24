@@ -13,10 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 async def publish_content_job(item_id: str) -> None:
-    """
-    Called by APScheduler to publish a scheduled content item.
-    Creates its own Bot instance and DB session — runs independently of the aiohttp app.
-    """
     bot = Bot(token=settings.bot.token)
     try:
         async with async_session() as session:
@@ -28,7 +24,6 @@ async def publish_content_job(item_id: str) -> None:
                 logger.warning("publish_content_job: item %s not found", item_id)
                 return
 
-            # Determine target chat IDs
             target_ids: list[int] = []
             if item.target_chat_ids:
                 try:
@@ -38,12 +33,10 @@ async def publish_content_job(item_id: str) -> None:
             if not target_ids:
                 target_ids = [settings.bot.main_channel_id]
 
-            # Build post text with subject header if present
             sep = "─" * 28
             header = f"{item.subject}\n{sep}\n" if item.subject else ""
             text = header + (item.text or "")
 
-            # Apply active persona signature
             try:
                 from bot.services.persona_service import PersonaService
                 async with async_session() as psession:
@@ -52,7 +45,6 @@ async def publish_content_job(item_id: str) -> None:
             except Exception as exc:
                 logger.warning("publish_content_job: persona fetch failed: %s", exc)
 
-            # Send to each target
             sent = 0
             for chat_id in target_ids:
                 log = BroadcastLog(

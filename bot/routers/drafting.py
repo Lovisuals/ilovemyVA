@@ -1,18 +1,3 @@
-"""
-Draft creation wizard — single persistent message morphs through every step:
-  Subject → Body → Action → [Schedule type → Time → Days | Datetime] → Targets → Report
-
-FSM data keys:
-  draft_msg_id, draft_chat_id  — wizard message to keep editing
-  subject, body                 — post content
-  post_type                     — post_now | recurring | one_time
-  sched_time                    — always | HH:MM
-  selected_days                 — list[str]  e.g. ["mo","tu","we","th","fr"]
-  sched_dt                      — one-time datetime string "DD/MM/YYYY HH:MM"
-  selected_ids                  — list[int] chosen chat_ids
-  back_to                       — origin for TargetToggle back navigation
-  retry_text, retry_ids         — for failed-send retry
-"""
 import json
 import re
 from datetime import datetime, timedelta, timezone
@@ -66,8 +51,6 @@ _TIME_LABELS = {
 }
 
 
-# ── helpers ──────────────────────────────────────────────────────────────────
-
 def _days_text(days: List[str]) -> str:
     if sorted(days) == sorted(_ALL_DAYS):   return "every day"
     if sorted(days) == sorted(_WEEKDAYS):   return "weekdays"
@@ -92,7 +75,6 @@ async def _safe_delete(msg: Message) -> None:
 
 
 async def _get_chats(session: AsyncSession) -> list:
-    """Returns active connected chats, or a synthetic main-channel entry as fallback."""
     chats = await ConnectedChatService.list_active(session)
     if not chats:
         from bot.models.connected_chat import ConnectedChat
@@ -145,11 +127,8 @@ async def _do_send(
     return results
 
 
-# ── Mini App web_app_data receiver ───────────────────────────────────────────
-
 @router.message(F.web_app_data, F.chat.type == "private")
 async def on_editor_data(message: Message, state: FSMContext, bot: Bot):
-    """Receives subject + body from the Mini App editor and jumps to action choice."""
     await _safe_delete(message)
     try:
         payload = json.loads(message.web_app_data.data)
@@ -163,8 +142,6 @@ async def on_editor_data(message: Message, state: FSMContext, bot: Bot):
 
     fsm_data = await state.get_data()
 
-    # If no wizard message exists yet (edge case: app opened without /new),
-    # create one now so subsequent steps have a message to morph.
     if not fsm_data.get("draft_msg_id"):
         sent = await bot.send_message(message.chat.id, DRAFT_STEP1, reply_markup=build_step1_kb())
         await state.update_data(draft_msg_id=sent.message_id, draft_chat_id=message.chat.id)
@@ -180,8 +157,6 @@ async def on_editor_data(message: Message, state: FSMContext, bot: Bot):
         build_action_kb(),
     )
 
-
-# ── entry points ─────────────────────────────────────────────────────────────
 
 @router.message(Command("new"))
 async def cmd_new(message: Message, bot_user: BotUser, state: FSMContext):
@@ -206,8 +181,6 @@ async def nav_new(query: CallbackQuery, bot_user: BotUser, state: FSMContext, bo
     await query.answer()
 
 
-# ── "Type Instead" — switch to plain-text entry from Mini App prompt ──────────
-
 @router.callback_query(PostAction.filter(F.action == "type_mode"))
 async def switch_to_type_mode(query: CallbackQuery, state: FSMContext, bot: Bot):
     data = await state.get_data()
@@ -216,8 +189,6 @@ async def switch_to_type_mode(query: CallbackQuery, state: FSMContext, bot: Bot)
                 DRAFT_STEP1, build_step2_kb())
     await query.answer()
 
-
-# ── step 1 — subject ─────────────────────────────────────────────────────────
 
 @router.message(DraftCreation.WAITING_SUBJECT, F.text, F.chat.type == "private")
 async def on_subject(message: Message, state: FSMContext, bot: Bot):
@@ -237,8 +208,6 @@ async def on_subject(message: Message, state: FSMContext, bot: Bot):
                 DRAFT_STEP2.format(subject=subject), build_step2_kb())
 
 
-# ── step 2 — body ────────────────────────────────────────────────────────────
-
 @router.message(DraftCreation.WAITING_BODY, F.text, F.chat.type == "private")
 async def on_body(message: Message, state: FSMContext, bot: Bot):
     body = (message.text or "").strip()
@@ -253,8 +222,6 @@ async def on_body(message: Message, state: FSMContext, bot: Bot):
     await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
                 DRAFT_PREVIEW.format(subject=subject, body=preview_body), build_action_kb())
 
-
-# ── step 2 — edit subject button (from body or preview) ──────────────────────
 
 @router.callback_query(PostAction.filter(F.action == "edit_subj"),
                        DraftCreation.WAITING_BODY)
@@ -282,8 +249,6 @@ async def edit_body(query: CallbackQuery, state: FSMContext, bot: Bot):
     await query.answer()
 
 
-# ── cancel (any state) ───────────────────────────────────────────────────────
-
 @router.callback_query(PostAction.filter(F.action == "cancel"))
 async def post_cancel(query: CallbackQuery, state: FSMContext, bot_user: BotUser, bot: Bot):
     await state.clear()
@@ -291,8 +256,6 @@ async def post_cancel(query: CallbackQuery, state: FSMContext, bot_user: BotUser
                 MENU_ADMIN, build_main_menu(bot_user.role))
     await query.answer()
 
-
-# ── step 3 — action choice ───────────────────────────────────────────────────
 
 @router.callback_query(PostAction.filter(F.action == "draft"), DraftCreation.CHOOSING_ACTION)
 async def post_save_draft(
@@ -335,8 +298,6 @@ async def post_sched(query: CallbackQuery, state: FSMContext, bot: Bot):
     await query.answer()
 
 
-# ── schedule type ────────────────────────────────────────────────────────────
-
 @router.callback_query(SchedType.filter(F.sched_type == "back"), DraftCreation.CHOOSING_SCHED_TYPE)
 async def sched_type_back(query: CallbackQuery, state: FSMContext, bot: Bot):
     data        = await state.get_data()
@@ -368,8 +329,6 @@ async def sched_one_time(query: CallbackQuery, state: FSMContext, bot: Bot):
                 DRAFT_DATETIME_PICK.format(subject=data.get("subject", "")), build_datetime_kb())
     await query.answer()
 
-
-# ── one-time datetime entry ───────────────────────────────────────────────────
 
 @router.callback_query(SchedType.filter(F.sched_type == "back"), DraftCreation.ENTERING_DATETIME)
 async def datetime_back(query: CallbackQuery, state: FSMContext, bot: Bot):
@@ -407,8 +366,6 @@ async def on_datetime(message: Message, state: FSMContext, bot: Bot, session: As
                 build_target_kb(chats, all_ids, confirm_label="✅ Schedule"))
 
 
-# ── time picker ───────────────────────────────────────────────────────────────
-
 @router.callback_query(TimeSlot.filter(F.slot == "back"), DraftCreation.CHOOSING_TIME)
 async def time_back(query: CallbackQuery, state: FSMContext, bot: Bot):
     data = await state.get_data()
@@ -443,8 +400,6 @@ async def time_selected(query: CallbackQuery, callback_data: TimeSlot, state: FS
     await query.answer()
 
 
-# ── custom time entry ────────────────────────────────────────────────────────
-
 @router.callback_query(TimeSlot.filter(F.slot == "back"), DraftCreation.ENTERING_CUSTOM_TIME)
 async def custom_time_back(query: CallbackQuery, state: FSMContext, bot: Bot):
     data = await state.get_data()
@@ -477,8 +432,6 @@ async def on_custom_time(message: Message, state: FSMContext, bot: Bot):
                 DRAFT_DAY_PICK.format(subject=data.get("subject", ""), time_text=sched_time),
                 build_day_kb(list(_ALL_DAYS)))
 
-
-# ── day picker ────────────────────────────────────────────────────────────────
 
 @router.callback_query(DayToggle.filter(F.day == "back"), DraftCreation.CHOOSING_DAYS)
 async def days_back(query: CallbackQuery, state: FSMContext, bot: Bot):
@@ -534,8 +487,6 @@ async def day_toggle(query: CallbackQuery, callback_data: DayToggle, state: FSMC
         pass
     await query.answer()
 
-
-# ── target selector ───────────────────────────────────────────────────────────
 
 @router.callback_query(TargetToggle.filter(F.action == "back"), DraftCreation.SELECTING_TARGETS)
 async def targets_back(query: CallbackQuery, state: FSMContext, bot: Bot):
@@ -698,8 +649,6 @@ async def targets_confirm(
                     ), build_menu_row())
         await query.answer("Scheduled!")
 
-
-# ── retry failed broadcasts ───────────────────────────────────────────────────
 
 @router.callback_query(RetryBroadcast.filter())
 async def retry_broadcast(

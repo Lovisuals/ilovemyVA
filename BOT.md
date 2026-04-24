@@ -7,9 +7,7 @@
 ---
 
 ```yaml
-################################################################################
 # MANIFEST
-################################################################################
 version: "1.3-production"
 name: MedLocumContentBot
 codename: "APEX"
@@ -26,7 +24,6 @@ platform: "Telegram Bot API 9.x (2026)"
 created: "2026-04-23"
 updated: "2026-04-23"
 
-# ─── Agent Stack ──────────────────────────────────────────────────────────────
 agents:
   primary:
     name: Antigravity
@@ -72,9 +69,7 @@ agents:
       - "faq_match confidence < 0.80 triggers 'escalate to human' response"
       - "No agent may call Telegram sendMessage without passing through BroadcastService"
 
-################################################################################
 # RUNTIME STACK
-################################################################################
 recommended_stack:
   language: "Python 3.12+"
   framework: "aiogram 3.x"            # async, routers, FSM, magic filters
@@ -107,9 +102,7 @@ python_dependencies:
   - python-dotenv>=1.0
   - httpx>=0.27              # async HTTP for webhook + external calls
 
-################################################################################
 # CONFIGURATION (Pydantic Settings — config.py)
-################################################################################
 config:
   # Loaded from .env; all fields validated at startup. Missing = hard crash.
   bot:
@@ -206,9 +199,7 @@ config:
     retention_days: 90
     notify_owner_on: ["CRITICAL","schedule_fail","tone_flag","ban_request","agent_error"]
 
-################################################################################
 # DATABASE SCHEMA (SQLAlchemy Models — models/)
-################################################################################
 models:
 
   ContentItem:
@@ -280,10 +271,8 @@ models:
       level:        "VARCHAR(16), default='INFO'"
       created_at:   "TIMESTAMPTZ, default=utcnow(), index"
 
-################################################################################
 # SEMANTIC INTENT ANCHORS  (LLM Coding Directive §1)
 # Every handler and service must state its intent in verb-object-outcome format.
-################################################################################
 semantic_intents:
 
   admin_panel:
@@ -328,9 +317,7 @@ semantic_intents:
     success: "Owner receives full context (user, message, confidence); acts via button"
     failure: "Owner unreachable (bot blocked) → event persisted in ModerationEvent, next startup retries notification"
 
-################################################################################
 # PROJECT STRUCTURE
-################################################################################
 structure:
   root: "medlocum_content_bot/"
   tree:
@@ -411,9 +398,7 @@ structure:
     - "BOT.md                      # ← THIS FILE"
     - "EDGES_LOG.md                # Mandatory (see §EDGES)"
 
-################################################################################
 # MAIN ENTRY POINT — main.py (pseudocode contract)
-################################################################################
 main_py_contract:
   description: >
     Sets up Bot, Dispatcher, includes all routers, registers middleware,
@@ -438,9 +423,7 @@ main_py_contract:
     3: "Close Redis pool"
     4: "Notify owner: '🔴 Bot shutting down.'"
 
-################################################################################
 # ADMIN INTERFACE SPECIFICATION
-################################################################################
 admin_interface:
 
   entry_points:
@@ -478,9 +461,7 @@ admin_interface:
       - label: "🗑 Delete"       callback: "item:delete:{item_id}"       style: "danger"
       - label: "← Back"         callback: "bucket:select:{bucket_name}"
 
-################################################################################
 # FSM STATE MACHINES
-################################################################################
 fsm:
 
   DraftCreation:
@@ -519,9 +500,7 @@ fsm:
     transitions:
       CONFIRMING_BROADCAST → (sent): "BroadcastService.send() called per target"
 
-################################################################################
 # KEYBOARD BUILDERS (keyboard/ contracts)
-################################################################################
 keyboards:
 
   bucket_kb:
@@ -549,9 +528,7 @@ keyboards:
       - "Each target: '☑ {name}' if selected else '☐ {name}'; callback: broadcast:toggle:{chat_id}"
       - "Bottom row: '✅ Done (N selected)' | '✗ Cancel'"
 
-################################################################################
 # SERVICE CONTRACTS
-################################################################################
 services:
 
   BucketService:
@@ -655,9 +632,7 @@ services:
         returns: "SpamResult(is_spam, confidence)"
         fallback: "SpamResult(is_spam=False, confidence=0.0)"
 
-################################################################################
 # ANTI-HALLUCINATION PROTOCOL (enforced at every layer)
-################################################################################
 anti_hallucination:
 
   principle: >
@@ -690,9 +665,7 @@ anti_hallucination:
       - "Appended by SchedulerService.publish_job, not by Gemini"
       - "Disclaimer text is hardcoded in config — never AI-generated"
 
-################################################################################
 # SECURITY SPECIFICATION
-################################################################################
 security:
 
   auth_middleware:
@@ -721,9 +694,7 @@ security:
     html: "All user-provided text passed through aiogram html.escape() before insertion into formatted messages"
     callback_data: "Structural validation (see above); max 64 chars enforced by aiogram"
 
-################################################################################
 # SCHEDULER INTEGRATION (scheduler/)
-################################################################################
 scheduler:
 
   setup:
@@ -775,9 +746,7 @@ scheduler:
             await notify_owner_publish_failure(bot, item, last_error=e)
             # Item remains in 'scheduled' bucket for manual intervention
 
-################################################################################
 # LOGGING SPECIFICATION
-################################################################################
 logging:
 
   library: structlog
@@ -825,9 +794,7 @@ logging:
     - "moderation_escalate"
     - "agent_call_error (if persistent)"
 
-################################################################################
 # EDGES_LOG.md — Mandatory Edge Cases (LLM Coding Directive §7)
-################################################################################
 edges_initial_entries:
   description: >
     EDGES_LOG.md must exist at project root and be updated immediately
@@ -891,9 +858,7 @@ edges_initial_entries:
         Owner notified with code DB-POOL. Implement Redis cache for bucket page reads
         (TTL 10s) to reduce DB pressure under burst.
 
-################################################################################
 # IMPLEMENTATION DOS AND DON'TS (non-negotiable)
-################################################################################
 rules:
 
   DO:
@@ -923,9 +888,7 @@ rules:
     - "NEVER generate medical dosages, diagnoses, or treatment plans from any agent"
     - "NEVER skip the EDGES_LOG.md update after discovering a new edge case"
 
-################################################################################
 # TESTING REQUIREMENTS
-################################################################################
 testing:
 
   philosophy: >
@@ -979,9 +942,7 @@ testing:
     fallback return value. A negative test that passes before the fix is written
     is invalid and must be rewritten.
 
-################################################################################
 # ROADMAP
-################################################################################
 roadmap:
   "v1.3 (Current)":
     - Bucket navigation + pagination
@@ -1001,9 +962,7 @@ roadmap:
     - Telegram Mini App dashboard (React, read-only analytics)
     - Webhook-based real-time delivery status
 
-################################################################################
 # IMPLEMENTATION CHECKLIST (agent/developer completes before marking task done)
-################################################################################
 implementation_checklist:
   - "[x] config.py loads all env vars; crashes with clear message on missing"
   - "[x] All SQLAlchemy models match schema above; Alembic migration generated"
@@ -1026,9 +985,7 @@ implementation_checklist:
   - "[x] Dockerfile and docker-compose.yml functional"
   - "[x] .env.example populated with all required keys (no real values)"
 
-################################################################################
 # AUDIT TRACE (LLM Coding Directive §8)
-################################################################################
 audit_trace:
   Intent:       "confirmed — Content Manager Bot, owner-controlled, zero hallucination pipeline"
   Asserts:      "7 runtime assertions specified (job existence, bucket state, item existence, schema validity, dedup logic, pool bounds, lock state)"

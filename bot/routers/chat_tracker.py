@@ -1,8 +1,3 @@
-"""
-Tracks every group and channel the bot is added to or removed from.
-Fires on my_chat_member updates (bot's own membership changes).
-Fires on channel_post / message to keep last_active_at fresh.
-"""
 import logging
 
 from aiogram import F, Router
