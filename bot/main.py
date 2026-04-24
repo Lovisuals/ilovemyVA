@@ -37,7 +37,7 @@ def run_migrations():
         logger.warning("Migration error (non-blocking): %s", e)
 
 
-async def on_startup(bot: Bot, **kwargs):
+async def _deferred_startup(bot: Bot):
     run_migrations()
 
     try:
@@ -54,16 +54,20 @@ async def on_startup(bot: Bot, **kwargs):
         logger.warning("Webhook configuration failed: %s", e)
 
     try:
-        scheduler = await setup_scheduler()
+        scheduler = await asyncio.wait_for(setup_scheduler(), timeout=10.0)
         bot["scheduler"] = scheduler
-        await scheduler.start()
-    except Exception as e:
+        await asyncio.wait_for(scheduler.start(), timeout=10.0)
+    except (Exception, asyncio.TimeoutError) as e:
         logger.warning("Scheduler failed to start: %s", e)
 
     try:
         await bot.send_message(settings.bot.owner_id, BOT_ONLINE)
     except Exception as e:
         logger.warning("Failed to notify owner on startup: %s", e)
+
+
+async def on_startup(bot: Bot, **kwargs):
+    asyncio.create_task(_deferred_startup(bot))
 
 
 async def on_shutdown(bot: Bot, **kwargs):
@@ -80,7 +84,7 @@ async def on_shutdown(bot: Bot, **kwargs):
         pass
 
 
-async def health_check(request: web.Request) -> web.Response:
+async def health_check(_request: web.Request) -> web.Response:
     return web.json_response({"status": "ok", "version": "1.4"})
 
 
