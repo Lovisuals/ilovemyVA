@@ -1,5 +1,3 @@
-"bot/services/bucket_service.py"
-
 import uuid
 from typing import List, Tuple, Optional
 

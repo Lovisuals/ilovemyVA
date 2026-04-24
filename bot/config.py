@@ -1,5 +1,3 @@
-"bot/config.py"
-
 import os
 from typing import List, Optional
 from pydantic import Field, field_validator

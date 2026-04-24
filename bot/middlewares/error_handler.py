@@ -1,10 +1,7 @@
-"bot/middlewares/error_handler.py"
-
+import logging
 import traceback
-import sys
 from typing import Any, Awaitable, Callable, Dict
 
-import structlog
 from aiogram import BaseMiddleware
 from aiogram.types import Update
 
@@ -12,7 +9,8 @@ from bot.config import settings
 from bot.models.audit_log import AuditLog
 from database.session import async_session
 
-logger = structlog.get_logger()
+logger = logging.getLogger(__name__)
+
 
 class ErrorHandlerMiddleware(BaseMiddleware):
     async def __call__(
@@ -25,14 +23,12 @@ class ErrorHandlerMiddleware(BaseMiddleware):
             return await handler(event, data)
         except Exception as e:
             error_trace = traceback.format_exc()
-            sys.stderr.write(f"ERROR in handler: {str(e)}\n{error_trace}\n")
-            sys.stderr.flush()
-            logger.error("unhandled_exception", error=str(e), trace=error_trace)
+            logger.error("Unhandled exception: %s\n%s", e, error_trace)
 
             user_id = None
-            if event.message:
+            if event.message and event.message.from_user:
                 user_id = event.message.from_user.id
-            elif event.callback_query:
+            elif event.callback_query and event.callback_query.from_user:
                 user_id = event.callback_query.from_user.id
 
             try:
@@ -41,23 +37,21 @@ class ErrorHandlerMiddleware(BaseMiddleware):
                         event_code="CRITICAL",
                         actor_id=user_id,
                         level="CRITICAL",
-                        detail={"error": str(e), "trace": error_trace}
+                        detail={"error": str(e), "trace": error_trace},
                     )
                     session.add(audit)
                     await session.commit()
             except Exception as audit_err:
-                sys.stderr.write(f"Failed to log audit: {audit_err}\n")
-                sys.stderr.flush()
+                logger.warning("Failed to write audit log: %s", audit_err)
 
             try:
                 bot = data.get("bot")
                 if bot:
                     await bot.send_message(
                         settings.bot.owner_id,
-                        f"🚨 **CRITICAL ERROR**\n\nUser: {user_id}\nError: {str(e)}\n\nCheck logs for full traceback."
+                        f"🚨 **CRITICAL ERROR**\n\nUser: {user_id}\nError: {e}\n\nCheck logs for full traceback.",
                     )
             except Exception as notify_err:
-                sys.stderr.write(f"Failed to notify admin: {notify_err}\n")
-                sys.stderr.flush()
+                logger.warning("Failed to notify owner: %s", notify_err)
 
             return

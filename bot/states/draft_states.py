@@ -1,5 +1,3 @@
-"bot/states/draft_states.py"
-
 from aiogram.fsm.state import State, StatesGroup
 
 class DraftCreation(StatesGroup):

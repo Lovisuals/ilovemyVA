@@ -1,5 +1,3 @@
-"bot/models/audit_log.py"
-
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 

@@ -1,10 +1,8 @@
-"bot/middlewares/auth.py"
-
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Dict, Optional
 
 from aiogram import BaseMiddleware
-from aiogram.types import Update, Message, CallbackQuery
+from aiogram.types import Update
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.config import settings
 from bot.models.bot_user import BotUser, UserRole
 from bot.strings import ACCOUNT_DEACTIVATED, PENDING_ACCESS
-from database.session import async_session
 
 class AuthMiddleware(BaseMiddleware):
     async def __call__(
@@ -25,7 +22,7 @@ class AuthMiddleware(BaseMiddleware):
         user_name: Optional[str] = None
         full_name: Optional[str] = None
 
-        if event.message:
+        if event.message and event.message.from_user:
             user_id = event.message.from_user.id
             user_name = event.message.from_user.username
             full_name = event.message.from_user.full_name
@@ -45,27 +42,32 @@ class AuthMiddleware(BaseMiddleware):
         if not session:
             return await handler(event, data)
 
-        stmt = select(BotUser).where(BotUser.id == user_id)
-        result = await session.execute(stmt)
-        bot_user = result.scalar_one_or_none()
+        try:
+            stmt = select(BotUser).where(BotUser.id == user_id)
+            result = await session.execute(stmt)
+            bot_user = result.scalar_one_or_none()
 
-        if not bot_user:
-            role = UserRole.SUPERADMIN if user_id == settings.bot.owner_id else UserRole.PENDING
-            bot_user = BotUser(
-                id=user_id,
-                username=user_name,
-                full_name=full_name or "Unknown",
-                role=role,
-                last_seen=datetime.now(timezone.utc)
-            )
-            session.add(bot_user)
-            await session.commit()
-            await session.refresh(bot_user)
-        else:
-            bot_user.last_seen = datetime.now(timezone.utc)
-            bot_user.username = user_name
-            bot_user.full_name = full_name or bot_user.full_name
-            await session.commit()
+            is_new_user = False
+            if not bot_user:
+                is_new_user = True
+                role = UserRole.SUPERADMIN if user_id == settings.bot.owner_id else UserRole.PENDING
+                bot_user = BotUser(
+                    id=user_id,
+                    username=user_name,
+                    full_name=full_name or "Unknown",
+                    role=role,
+                    last_seen=datetime.now(timezone.utc)
+                )
+                session.add(bot_user)
+                await session.commit()
+                await session.refresh(bot_user)
+            else:
+                bot_user.last_seen = datetime.now(timezone.utc)
+                bot_user.username = user_name
+                bot_user.full_name = full_name or bot_user.full_name
+                await session.commit()
+        except Exception:
+            return await handler(event, data)
 
         if not bot_user.is_active:
             if event.message:
@@ -85,5 +87,6 @@ class AuthMiddleware(BaseMiddleware):
                 return
 
         data["bot_user"] = bot_user
+        data["is_new_user"] = is_new_user
 
         return await handler(event, data)

@@ -1,5 +1,3 @@
-"bot/middlewares/logging_mw.py"
-
 import time
 from typing import Any, Awaitable, Callable, Dict
 
@@ -19,9 +17,9 @@ class LoggingMiddleware(BaseMiddleware):
         start_time = time.time()
 
         user_id = "unknown"
-        if event.message:
+        if event.message and event.message.from_user:
             user_id = event.message.from_user.id
-        elif event.callback_query:
+        elif event.callback_query and event.callback_query.from_user:
             user_id = event.callback_query.from_user.id
 
         update_type = event.event_type

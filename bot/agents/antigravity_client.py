@@ -1,5 +1,3 @@
-"bot/agents/antigravity_client.py"
-
 import json
 import httpx
 import asyncio

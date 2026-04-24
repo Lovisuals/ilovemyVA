@@ -1,5 +1,3 @@
-"bot/utils/time_utils.py"
-
 from datetime import datetime, timezone
 import pytz
 

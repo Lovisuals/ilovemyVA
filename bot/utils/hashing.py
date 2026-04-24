@@ -1,5 +1,3 @@
-"bot/utils/hashing.py"
-
 import hashlib
 import json
 from typing import List, Dict, Any

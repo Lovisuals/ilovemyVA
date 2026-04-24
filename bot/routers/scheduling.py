@@ -1,5 +1,3 @@
-"bot/routers/scheduling.py"
-
 import uuid
 from datetime import datetime, time, timedelta
 import pytz

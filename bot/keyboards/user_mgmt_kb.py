@@ -1,10 +1,8 @@
-"bot/keyboards/user_mgmt_kb.py"
-
 from typing import List
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.callbacks import UserAction, UserPage
+from bot.callbacks import OnboardGen, UserAction, UserPage
 from bot.models.bot_user import BotUser, UserRole
 from bot.keyboards.pagination_kb import build_paginator_buttons
 
@@ -37,7 +35,9 @@ def build_user_list(users: List[BotUser], page: int, total_pages: int) -> Inline
 def build_user_actions(user_id: int, current_role: UserRole) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
-    if current_role == UserRole.USER:
+    if current_role == UserRole.PENDING:
+        builder.button(text="🔑 Generate Code", callback_data=OnboardGen(user_id=user_id).pack())
+    elif current_role == UserRole.USER:
         builder.button(text="🛡 Promote", callback_data=UserAction(user_id=user_id, action="promote").pack())
     elif current_role == UserRole.ADMIN:
         builder.button(text="👤 Demote", callback_data=UserAction(user_id=user_id, action="demote").pack())

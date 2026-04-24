@@ -1,5 +1,3 @@
-"bot/callbacks.py"
-
 from aiogram.filters.callback_data import CallbackData
 
 class BucketSelect(CallbackData, prefix="bucket_sel"):

@@ -1,5 +1,3 @@
-"bot/models/storage_record.py"
-
 import enum
 import uuid
 from datetime import datetime, timezone

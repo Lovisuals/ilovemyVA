@@ -1,5 +1,3 @@
-"bot/services/storage_service.py"
-
 import uuid
 from typing import List, Tuple, Optional
 
@@ -20,8 +18,6 @@ class TelegramStorageService:
         uploader_id: int,
         content_item_id: Optional[uuid.UUID] = None
     ) -> StorageRecord:
-        # SIDE EFFECT: Copying content to a private storage channel for cloud archiving.
-        # Required because Railway trial filesystem is ephemeral.
         copied = await bot.copy_message(
             chat_id=settings.bot.storage_channel_id,
             from_chat_id=message.chat.id,
@@ -83,11 +79,8 @@ class TelegramStorageService:
         record = result.scalar_one_or_none()
 
         if record:
-            from aiogram.exceptions import TelegramBadRequest
             try:
                 await bot.delete_message(record.storage_channel_id, record.storage_message_id)
-            except TelegramBadRequest:
-                pass
             except Exception:
                 pass
 

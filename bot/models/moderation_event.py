@@ -1,5 +1,3 @@
-"bot/models/moderation_event.py"
-
 import enum
 import uuid
 from datetime import datetime, timezone

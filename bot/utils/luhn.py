@@ -1,5 +1,3 @@
-"bot/utils/luhn.py"
-
 import secrets
 
 def calculate_luhn_check_digit(digits: str) -> int:

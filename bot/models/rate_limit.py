@@ -1,5 +1,3 @@
-"bot/models/rate_limit.py"
-
 from datetime import datetime
 from sqlalchemy import BigInteger, DateTime, Integer
 from sqlalchemy.orm import Mapped, mapped_column

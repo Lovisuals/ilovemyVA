@@ -1,5 +1,3 @@
-"bot/utils/spam_keywords.py"
-
 import re
 
 SPAM_KEYWORDS = [

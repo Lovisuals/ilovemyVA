@@ -1,5 +1,3 @@
-"bot/models/bot_user.py"
-
 import enum
 from datetime import datetime, timezone
 from typing import Optional
@@ -10,22 +8,12 @@ from sqlalchemy.orm import Mapped, mapped_column
 from database.base import Base
 
 class UserRole(enum.Enum):
-    """
-    User roles for access control.
-    superadmin: System owner (OWNER_ID)
-    admin: Promoted user with management rights
-    user: Onboarded user with content access
-    pending: New user awaiting verification
-    """
     SUPERADMIN = "superadmin"
     ADMIN = "admin"
     USER = "user"
     PENDING = "pending"
 
 class BotUser(Base):
-    """
-    Represents a Telegram user interacting with the bot.
-    """
     __tablename__ = "bot_users"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)

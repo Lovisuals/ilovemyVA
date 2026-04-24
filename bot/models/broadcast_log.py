@@ -1,5 +1,3 @@
-"bot/models/broadcast_log.py"
-
 import enum
 import uuid
 from datetime import datetime, timezone

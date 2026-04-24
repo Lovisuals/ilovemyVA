@@ -1,5 +1,3 @@
-"bot/states/schedule_states.py"
-
 from aiogram.fsm.state import State, StatesGroup
 
 class SchedulePicking(StatesGroup):

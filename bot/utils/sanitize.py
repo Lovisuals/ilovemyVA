@@ -1,5 +1,3 @@
-"bot/utils/sanitize.py"
-
 import html
 
 def escape_html(text: str) -> str:

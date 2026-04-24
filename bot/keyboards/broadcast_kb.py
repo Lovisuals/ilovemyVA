@@ -1,5 +1,3 @@
-"bot/keyboards/broadcast_kb.py"
-
 from typing import List, Dict
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder

@@ -1,5 +1,3 @@
-"bot/strings.py"
-
 WELCOME_SUPERADMIN = "👑 Welcome back, Superadmin! Use /admin to access the control center."
 WELCOME_ADMIN = "🛡 Welcome back, Admin! Use /admin to manage content and users."
 WELCOME_USER = "✅ Welcome back! You can now browse content and interact with the MedLocum platform."

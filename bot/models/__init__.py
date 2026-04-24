@@ -1,5 +1,3 @@
-"bot/models/__init__.py"
-
 from bot.models.bot_user import BotUser
 from bot.models.content_item import ContentItem
 from bot.models.broadcast_log import BroadcastLog

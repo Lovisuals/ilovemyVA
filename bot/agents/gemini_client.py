@@ -1,5 +1,3 @@
-"bot/agents/gemini_client.py"
-
 import json
 import asyncio
 from typing import Type, TypeVar

@@ -1,5 +1,3 @@
-"bot/services/tone_service.py"
-
 from bot.config import settings
 from bot.agents.schemas import ToneResult
 from bot.agents.gemini_client import GeminiClient

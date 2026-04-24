@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import List, Tuple, Optional
 from sqlalchemy import select, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,5 +34,15 @@ class UserService:
     @staticmethod
     async def deactivate(session: AsyncSession, user_id: int):
         stmt = update(BotUser).where(BotUser.id == user_id).values(is_active=False)
+        await session.execute(stmt)
+        await session.commit()
+
+    @staticmethod
+    async def set_verification_code(session: AsyncSession, user_id: int, code: str):
+        stmt = update(BotUser).where(BotUser.id == user_id).values(
+            verification_code=code,
+            code_generated_at=datetime.now(timezone.utc),
+            code_used=False,
+        )
         await session.execute(stmt)
         await session.commit()

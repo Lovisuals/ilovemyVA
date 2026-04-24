@@ -1,5 +1,3 @@
-"bot/services/scheduler_service.py"
-
 import uuid
 from datetime import datetime
 from apscheduler._schedulers.async_ import AsyncScheduler

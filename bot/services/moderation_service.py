@@ -1,5 +1,3 @@
-"bot/services/moderation_service.py"
-
 from aiogram import Bot
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,8 +32,6 @@ class ModerationService:
             confidence = 0.5 if is_spam else 0.0
 
         if is_spam and confidence > 0.85:
-            # SIDE EFFECT: Automatically deleting high-confidence spam.
-            # Security requirement: protect community from malicious links.
             try:
                 await message.delete()
             except Exception:

@@ -1,5 +1,3 @@
-"bot/utils/preview.py"
-
 def truncate_preview(text: str, length: int) -> str:
     if not text:
         return ""
