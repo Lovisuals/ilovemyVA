@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Content Editor</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root {
+  --bg:     var(--tg-theme-bg-color, #ffffff);
+  --bg2:    var(--tg-theme-secondary-bg-color, #f0f2f5);
+  --text:   var(--tg-theme-text-color, #000000);
+  --hint:   var(--tg-theme-hint-color, #999999);
+  --accent: var(--tg-theme-link-color, #2481cc);
+  --border: rgba(128,128,128,0.18);
+  --danger: #e05353;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%; height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+/* ── Tabs ────────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.tab {
+  flex: 1;
+  padding: 11px 0;
+  text-align: center;
+  cursor: pointer;
+  font-size: 13.5px;
+  color: var(--hint);
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+  user-select: none;
+}
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── Subject ─────────────────────────────────────────────────── */
+.subject-wrap {
+  padding: 12px 16px 0;
+  flex-shrink: 0;
+}
+.subject-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  border-bottom: 1.5px solid var(--border);
+  padding-bottom: 8px;
+}
+.subject-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--hint);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.subject-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  outline: none;
+  min-width: 0;
+}
+.subject-input::placeholder { color: var(--hint); font-weight: 400; }
+.subject-len {
+  font-size: 11px;
+  color: var(--hint);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.subject-len.warn { color: var(--danger); }
+
+/* ── Toolbar ─────────────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  padding: 5px 10px;
+  gap: 1px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+.toolbar::-webkit-scrollbar { display: none; }
+.tbtn {
+  background: none;
+  border: none;
+  color: var(--text);
+  padding: 6px 9px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 14px;
+  min-width: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .1s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  -webkit-user-select: none;
+}
+.tbtn:active { background: var(--border); }
+.tbtn.danger { color: var(--danger); }
+.tsep {
+  width: 1px; height: 18px;
+  background: var(--border);
+  margin: 0 3px;
+  flex-shrink: 0;
+}
+
+/* ── Editor / Preview area ───────────────────────────────────── */
+.pane-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#body-ta {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.7;
+  padding: 14px 16px;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  caret-color: var(--accent);
+}
+#body-ta::placeholder { color: var(--hint); }
+
+#preview-pane {
+  display: none;
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  font-size: 15px;
+  line-height: 1.7;
+}
+#preview-pane.show { display: block; }
+#preview-pane .prev-subject {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+#preview-pane hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 10px 0;
+}
+#preview-pane b { font-weight: 700; }
+#preview-pane i { font-style: italic; }
+#preview-pane s { text-decoration: line-through; }
+#preview-pane code {
+  font-family: 'Courier New', monospace;
+  background: var(--bg2);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+#preview-pane pre {
+  background: var(--bg2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+#preview-pane pre code { background: none; padding: 0; }
+#preview-pane ul, #preview-pane ol { padding-left: 22px; }
+#preview-pane li { margin: 3px 0; }
+#preview-pane p { margin: 2px 0; }
+#preview-pane .empty-hint { color: var(--hint); font-style: italic; }
+
+/* ── Emoji panel ─────────────────────────────────────────────── */
+#emoji-panel {
+  display: none;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  max-height: 140px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+#emoji-panel.show { display: flex; }
+.emoji-btn {
+  background: none; border: none;
+  font-size: 22px; cursor: pointer;
+  padding: 4px; border-radius: 6px;
+  line-height: 1;
+  transition: background .1s;
+}
+.emoji-btn:active { background: var(--border); }
+
+/* ── Stats bar ───────────────────────────────────────────────── */
+.stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 16px;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--hint);
+  flex-shrink: 0;
+}
+#char-stat.warn { color: var(--danger); }
+.autosave {
+  margin-left: auto;
+  font-size: 11px;
+  opacity: 0;
+  transition: opacity .4s;
+}
+.autosave.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" id="tab-write"   onclick="setTab('write')">✏️ Write</div>
+    <div class="tab"        id="tab-preview" onclick="setTab('preview')">👁 Preview</div>
+  </div>
+
+  <!-- Subject -->
+  <div class="subject-wrap">
+    <div class="subject-row">
+      <span class="subject-label">Subject</span>
+      <input id="subj" class="subject-input" type="text"
+             placeholder="Headline (optional)" maxlength="256" autocomplete="off">
+      <span class="subject-len" id="subj-len"></span>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar" id="toolbar">
+    <button class="tbtn" onclick="fmt('bold')"     title="Bold">𝐁</button>
+    <button class="tbtn" onclick="fmt('italic')"   title="Italic"><em>I</em></button>
+    <button class="tbtn" onclick="fmt('strike')"   title="Strikethrough"><s>S</s></button>
+    <button class="tbtn" onclick="fmt('code')"     title="Inline code" style="font-family:monospace;font-size:13px">&lt;/&gt;</button>
+    <div class="tsep"></div>
+    <button class="tbtn" onclick="fmt('ul')"       title="Bullet list">•</button>
+    <button class="tbtn" onclick="fmt('ol')"       title="Numbered list">1.</button>
+    <button class="tbtn" onclick="fmt('divider')"  title="Divider line">──</button>
+    <div class="tsep"></div>
+    <button class="tbtn" id="emoji-toggle" onclick="toggleEmoji()" title="Emoji">😊</button>
+    <div class="tsep"></div>
+    <button class="tbtn danger" onclick="clearAll()" title="Clear all">✕</button>
+  </div>
+
+  <!-- Pane wrapper -->
+  <div class="pane-wrap">
+    <textarea id="body-ta"
+      placeholder="Write or paste your content here…&#10;&#10;Supports *bold*, _italic_, ~strike~, \`code\`, - bullets&#10;Use Ctrl+B / Ctrl+I for quick formatting."
+      spellcheck="true" autocorrect="on"></textarea>
+
+    <div id="preview-pane"></div>
+    <div id="emoji-panel"></div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <span id="word-stat">0 words</span>
+    <span id="char-stat">0 chars</span>
+    <span class="autosave" id="autosave">✓ Saved</span>
+  </div>
+
+</div>
+<script>
+const tg     = window.Telegram.WebApp;
+const uid    = tg.initDataUnsafe?.user?.id || 'anon';
+const STORE  = 'mlj_draft_' + uid;
+const MAX    = 4096;
+
+tg.ready();
+tg.expand();
+
+// ── elements ──────────────────────────────────────────────────────────────────
+const subjEl  = document.getElementById('subj');
+const bodyEl  = document.getElementById('body-ta');
+const prevEl  = document.getElementById('preview-pane');
+const emojiEl = document.getElementById('emoji-panel');
+
+// ── emoji set ─────────────────────────────────────────────────────────────────
+const EMOJIS = [
+  '📢','📣','🔔','🏥','💊','🩺','👨‍⚕️','👩‍⚕️','🩻','💉','🩹','🧬',
+  '🔬','🩸','🫀','🫁','🧪','📋','📊','📈','📉','🔍','🎯','✅',
+  '❌','⚠️','ℹ️','📝','📌','💡','🔑','🗂️','📂','📁','🌐','⏰',
+  '📅','🗓️','✍️','🔴','🟡','🟢','💬','🗣️','👥','🤝','🏆','🌟',
+];
+EMOJIS.forEach(e => {
+  const b = document.createElement('button');
+  b.className = 'emoji-btn';
+  b.textContent = e;
+  b.onclick = () => insertAt(e);
+  emojiEl.appendChild(b);
+});
+
+// ── restore from localStorage ─────────────────────────────────────────────────
+try {
+  const saved = JSON.parse(localStorage.getItem(STORE) || 'null');
+  if (saved) {
+    if (saved.s) subjEl.value = saved.s;
+    if (saved.b) bodyEl.value = saved.b;
+  }
+} catch (_) {}
+updateStats();
+
+// ── autosave ──────────────────────────────────────────────────────────────────
+let saveTimer;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(STORE, JSON.stringify({ s: subjEl.value, b: bodyEl.value })); }
+    catch (_) {}
+    const el = document.getElementById('autosave');
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 1400);
+  }, 1200);
+}
+subjEl.addEventListener('input', () => { updateSubjLen(); scheduleSave(); });
+bodyEl.addEventListener('input', () => { updateStats();   scheduleSave(); });
+
+function updateSubjLen() {
+  const n  = subjEl.value.length;
+  const el = document.getElementById('subj-len');
+  if (n > 200) { el.textContent = `${n}/256`; el.classList.add('warn'); }
+  else          { el.textContent = ''; el.classList.remove('warn'); }
+}
+
+function updateStats() {
+  const t = bodyEl.value;
+  const w = t.trim() ? t.trim().split(/\s+/).length : 0;
+  document.getElementById('word-stat').textContent = `${w} word${w !== 1 ? 's' : ''}`;
+  const cc = document.getElementById('char-stat');
+  cc.textContent = `${t.length}/${MAX}`;
+  cc.classList.toggle('warn', t.length > MAX * 0.9);
+}
+
+// ── tabs ──────────────────────────────────────────────────────────────────────
+let activeTab = 'write';
+function setTab(t) {
+  activeTab = t;
+  document.getElementById('tab-write').classList.toggle('active', t === 'write');
+  document.getElementById('tab-preview').classList.toggle('active', t === 'preview');
+  document.getElementById('toolbar').style.display = t === 'write' ? '' : 'none';
+  bodyEl.style.display   = t === 'write' ? '' : 'none';
+  prevEl.classList.toggle('show', t === 'preview');
+  if (t === 'preview') { renderPreview(); emojiEl.classList.remove('show'); }
+}
+
+// ── preview renderer ──────────────────────────────────────────────────────────
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function inline(s) {
+  let t = esc(s);
+  t = t.replace(/\*\*(.+?)\*\*/g,  '<b>$1</b>');
+  t = t.replace(/\*([^*\n]+?)\*/g, '<b>$1</b>');
+  t = t.replace(/_([^_\n]+?)_/g,   '<i>$1</i>');
+  t = t.replace(/~~(.+?)~~/g,      '<s>$1</s>');
+  t = t.replace(/~([^~\n]+?)~/g,   '<s>$1</s>');
+  t = t.replace(/`([^`\n]+?)`/g,   '<code>$1</code>');
+  return t;
+}
+function renderPreview() {
+  const subj = subjEl.value.trim();
+  const raw  = bodyEl.value;
+  let   html = '';
+
+  if (subj) {
+    html += `<div class="prev-subject">${esc(subj)}</div><hr>`;
+  }
+  if (!raw.trim()) {
+    prevEl.innerHTML = html + '<span class="empty-hint">Nothing written yet…</span>';
+    return;
+  }
+
+  const lines = raw.split('\n');
+  let inCode = false, codeLines = [];
+
+  for (const line of lines) {
+    if (line.startsWith('```')) {
+      if (!inCode) { inCode = true; codeLines = []; }
+      else { html += `<pre><code>${esc(codeLines.join('\n'))}</code></pre>`; inCode = false; }
+      continue;
+    }
+    if (inCode) { codeLines.push(line); continue; }
+
+    if (/^─{3,}$/.test(line) || /^-{3,}$/.test(line)) { html += '<hr>'; continue; }
+    if (!line.trim()) { html += '<br>'; continue; }
+    if (/^[-•]\s+/.test(line)) { html += `<ul><li>${inline(line.replace(/^[-•]\s+/,''))}</li></ul>`; continue; }
+    if (/^\d+\.\s+/.test(line)) { html += `<ol><li>${inline(line.replace(/^\d+\.\s+/,''))}</li></ol>`; continue; }
+    html += `<p>${inline(line)}</p>`;
+  }
+  prevEl.innerHTML = html;
+}
+
+// ── formatting ────────────────────────────────────────────────────────────────
+function fmt(type) {
+  bodyEl.focus();
+  const ss = bodyEl.selectionStart, se = bodyEl.selectionEnd;
+  const sel = bodyEl.value.slice(ss, se);
+  const pre = bodyEl.value.slice(0, ss);
+  const aft = bodyEl.value.slice(se);
+
+  let rep, cur;
+  switch (type) {
+    case 'bold':    rep = sel ? `*${sel}*`  : '**';   cur = sel ? rep.length : 1; break;
+    case 'italic':  rep = sel ? `_${sel}_`  : '__';   cur = sel ? rep.length : 1; break;
+    case 'strike':  rep = sel ? `~${sel}~`  : '~~';   cur = sel ? rep.length : 1; break;
+    case 'code':    rep = sel ? `\`${sel}\`` : '``';  cur = sel ? rep.length : 1; break;
+
+    case 'ul': {
+      const nl = (pre === '' || pre.endsWith('\n')) ? '' : '\n';
+      if (sel) {
+        rep = sel.split('\n').map(l => `- ${l}`).join('\n');
+        cur = rep.length;
+      } else {
+        bodyEl.value = pre + nl + '- ' + aft;
+        const p = ss + nl.length + 2;
+        bodyEl.setSelectionRange(p, p);
+        scheduleSave(); updateStats(); return;
+      }
+      break;
+    }
+    case 'ol': {
+      const nl = (pre === '' || pre.endsWith('\n')) ? '' : '\n';
+      if (sel) {
+        rep = sel.split('\n').map((l, i) => `${i+1}. ${l}`).join('\n');
+        cur = rep.length;
+      } else {
+        bodyEl.value = pre + nl + '1. ' + aft;
+        const p = ss + nl.length + 3;
+        bodyEl.setSelectionRange(p, p);
+        scheduleSave(); updateStats(); return;
+      }
+      break;
+    }
+    case 'divider': {
+      const nl = (pre === '' || pre.endsWith('\n')) ? '' : '\n';
+      const div = nl + '\n' + '─'.repeat(28) + '\n\n';
+      bodyEl.value = pre + div + aft;
+      const p = ss + div.length;
+      bodyEl.setSelectionRange(p, p);
+      scheduleSave(); updateStats(); return;
+    }
+    default: return;
+  }
+  bodyEl.value = pre + rep + aft;
+  const p = ss + cur;
+  bodyEl.setSelectionRange(sel ? ss : p, sel ? ss + rep.length : p);
+  scheduleSave(); updateStats();
+}
+
+function insertAt(text) {
+  bodyEl.focus();
+  const ss = bodyEl.selectionStart, se = bodyEl.selectionEnd;
+  bodyEl.value = bodyEl.value.slice(0, ss) + text + bodyEl.value.slice(se);
+  const p = ss + text.length;
+  bodyEl.setSelectionRange(p, p);
+  emojiEl.classList.remove('show');
+  scheduleSave(); updateStats();
+}
+
+// ── emoji toggle ──────────────────────────────────────────────────────────────
+function toggleEmoji() { emojiEl.classList.toggle('show'); }
+bodyEl.addEventListener('focus', () => emojiEl.classList.remove('show'));
+
+// ── clear ─────────────────────────────────────────────────────────────────────
+function clearAll() {
+  const hasContent = bodyEl.value.trim() || subjEl.value.trim();
+  if (!hasContent) return;
+  tg.showConfirm('Clear everything and start fresh?', ok => {
+    if (!ok) return;
+    bodyEl.value = ''; subjEl.value = '';
+    updateStats(); updateSubjLen();
+    try { localStorage.removeItem(STORE); } catch (_) {}
+  });
+}
+
+// ── paste cleanup ─────────────────────────────────────────────────────────────
+bodyEl.addEventListener('paste', () => {
+  setTimeout(() => {
+    bodyEl.value = bodyEl.value.replace(/\n{4,}/g, '\n\n\n');
+    updateStats(); scheduleSave();
+  }, 0);
+});
+
+// ── keyboard shortcuts ────────────────────────────────────────────────────────
+bodyEl.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === 'b') { e.preventDefault(); fmt('bold'); }
+    if (e.key === 'i') { e.preventDefault(); fmt('italic'); }
+  }
+});
+
+// ── Telegram MainButton ───────────────────────────────────────────────────────
+tg.MainButton.setText('✓  Send to Bot');
+tg.MainButton.show();
+
+tg.MainButton.onClick(() => {
+  const subj = subjEl.value.trim();
+  const body = bodyEl.value.trim();
+
+  if (!body) {
+    tg.showAlert('Write some content before sending.');
+    return;
+  }
+  if (body.length > MAX) {
+    tg.showAlert(`Too long: ${body.length}/${MAX} characters. Shorten it a little.`);
+    return;
+  }
+
+  try { localStorage.removeItem(STORE); } catch (_) {}
+  tg.sendData(JSON.stringify({ subject: subj, body }));
+});
+
+// ── Back button ───────────────────────────────────────────────────────────────
+tg.BackButton.show();
+tg.BackButton.onClick(() => { scheduleSave(); tg.close(); });
+</script>
+</body>
+</html>

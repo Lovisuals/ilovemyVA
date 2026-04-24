@@ -1,12 +1,19 @@
-from typing import List
+from typing import List, Optional
 
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.callbacks import (
-    DayToggle, NavData, PostAction, RetryBroadcast, SchedType, TargetToggle, TimeSlot,
+    DayToggle, PostAction, RetryBroadcast, SchedType, TargetToggle, TimeSlot,
 )
 from bot.keyboards.menu_kb import MENU_BTN
+from bot.config import settings
+
+
+def _editor_url() -> Optional[str]:
+    if settings.bot.webhook_url:
+        return f"{settings.bot.webhook_url}/static/editor.html"
+    return None
 
 _DAYS = [
     ("Mo", "mo"), ("Tu", "tu"), ("We", "we"), ("Th", "th"),
@@ -30,13 +37,30 @@ def _cancel_btn() -> InlineKeyboardButton:
 
 
 def build_step1_kb() -> InlineKeyboardMarkup:
+    """Entry keyboard: open Mini App editor if available, else plain text flow."""
     builder = InlineKeyboardBuilder()
-    builder.row(_cancel_btn())
+    url = _editor_url()
+    if url:
+        builder.row(
+            InlineKeyboardButton(text="📝 Open Editor", web_app=WebAppInfo(url=url))
+        )
+        builder.row(
+            InlineKeyboardButton(text="⌨️ Type Instead", callback_data=PostAction(action="type_mode").pack()),
+            _cancel_btn(),
+        )
+    else:
+        builder.row(_cancel_btn())
     return builder.as_markup()
 
 
 def build_step2_kb() -> InlineKeyboardMarkup:
+    """Body-entry keyboard (text mode fallback)."""
     builder = InlineKeyboardBuilder()
+    url = _editor_url()
+    if url:
+        builder.row(
+            InlineKeyboardButton(text="📝 Open Editor", web_app=WebAppInfo(url=url))
+        )
     builder.row(
         InlineKeyboardButton(text="✏️ Edit Subject", callback_data=PostAction(action="edit_subj").pack()),
         _cancel_btn(),
@@ -45,6 +69,7 @@ def build_step2_kb() -> InlineKeyboardMarkup:
 
 
 def build_action_kb() -> InlineKeyboardMarkup:
+    """Post-action keyboard after content is ready."""
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="⚡ Post Now",   callback_data=PostAction(action="now").pack()),
@@ -53,10 +78,18 @@ def build_action_kb() -> InlineKeyboardMarkup:
     builder.row(
         InlineKeyboardButton(text="💾 Save Draft", callback_data=PostAction(action="draft").pack()),
     )
-    builder.row(
-        InlineKeyboardButton(text="✏️ Edit Subject", callback_data=PostAction(action="edit_subj").pack()),
-        InlineKeyboardButton(text="✏️ Edit Body",    callback_data=PostAction(action="edit_body").pack()),
-    )
+    url = _editor_url()
+    if url:
+        # Single "Edit in App" re-opens the editor for both subject and body
+        builder.row(
+            InlineKeyboardButton(text="📝 Edit in App",  web_app=WebAppInfo(url=url)),
+            InlineKeyboardButton(text="✏️ Subject",      callback_data=PostAction(action="edit_subj").pack()),
+        )
+    else:
+        builder.row(
+            InlineKeyboardButton(text="✏️ Edit Subject", callback_data=PostAction(action="edit_subj").pack()),
+            InlineKeyboardButton(text="✏️ Edit Body",    callback_data=PostAction(action="edit_body").pack()),
+        )
     builder.row(_cancel_btn())
     return builder.as_markup()
 

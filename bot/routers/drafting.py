@@ -145,6 +145,42 @@ async def _do_send(
     return results
 
 
+# ── Mini App web_app_data receiver ───────────────────────────────────────────
+
+@router.message(F.web_app_data, F.chat.type == "private")
+async def on_editor_data(message: Message, state: FSMContext, bot: Bot):
+    """Receives subject + body from the Mini App editor and jumps to action choice."""
+    await _safe_delete(message)
+    try:
+        payload = json.loads(message.web_app_data.data)
+    except (json.JSONDecodeError, AttributeError):
+        return
+
+    subject = (payload.get("subject") or "").strip()
+    body    = (payload.get("body") or "").strip()
+    if not body:
+        return
+
+    fsm_data = await state.get_data()
+
+    # If no wizard message exists yet (edge case: app opened without /new),
+    # create one now so subsequent steps have a message to morph.
+    if not fsm_data.get("draft_msg_id"):
+        sent = await bot.send_message(message.chat.id, DRAFT_STEP1, reply_markup=build_step1_kb())
+        await state.update_data(draft_msg_id=sent.message_id, draft_chat_id=message.chat.id)
+        fsm_data = await state.get_data()
+
+    await state.update_data(subject=subject, body=body)
+    await state.set_state(DraftCreation.CHOOSING_ACTION)
+
+    preview_body = body[:600] + ("…" if len(body) > 600 else "")
+    await _edit(
+        bot, fsm_data["draft_chat_id"], fsm_data["draft_msg_id"],
+        DRAFT_PREVIEW.format(subject=subject, body=preview_body),
+        build_action_kb(),
+    )
+
+
 # ── entry points ─────────────────────────────────────────────────────────────
 
 @router.message(Command("new"))
@@ -167,6 +203,17 @@ async def nav_new(query: CallbackQuery, bot_user: BotUser, state: FSMContext, bo
         draft_msg_id=query.message.message_id,
         draft_chat_id=query.message.chat.id,
     )
+    await query.answer()
+
+
+# ── "Type Instead" — switch to plain-text entry from Mini App prompt ──────────
+
+@router.callback_query(PostAction.filter(F.action == "type_mode"))
+async def switch_to_type_mode(query: CallbackQuery, state: FSMContext, bot: Bot):
+    data = await state.get_data()
+    await state.set_state(DraftCreation.WAITING_SUBJECT)
+    await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
+                DRAFT_STEP1, build_step2_kb())
     await query.answer()
 
 
@@ -463,7 +510,7 @@ async def days_confirm(query: CallbackQuery, state: FSMContext, session: AsyncSe
 
 
 @router.callback_query(DayToggle.filter(), DraftCreation.CHOOSING_DAYS)
-async def day_toggle(query: CallbackQuery, callback_data: DayToggle, state: FSMContext, bot: Bot):
+async def day_toggle(query: CallbackQuery, callback_data: DayToggle, state: FSMContext):
     day      = callback_data.day
     data     = await state.get_data()
     selected = list(data.get("selected_days", list(_ALL_DAYS)))
