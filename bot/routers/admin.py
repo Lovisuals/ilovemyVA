@@ -12,6 +12,7 @@ from bot.strings import ADMIN_PANEL_HEADER
 
 from bot.callbacks import BucketSelect, BucketPage, ControlAction, NavData
 from bot.services.system_service import SystemService
+from bot.config import settings
 
 router = Router()
 
