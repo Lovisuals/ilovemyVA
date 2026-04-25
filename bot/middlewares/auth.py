@@ -77,14 +77,21 @@ class AuthMiddleware(BaseMiddleware):
             return
 
         if bot_user.role == UserRole.PENDING:
-            is_start = event.message and event.message.text and event.message.text.startswith("/start")
-            is_code = event.message and event.message.text and "-" in event.message.text
-            if not (is_start or is_code):
-                if event.message:
-                    await event.message.answer(PENDING_ACCESS)
-                elif event.callback_query:
-                    await event.callback_query.answer(PENDING_ACCESS, show_alert=True)
-                return
+            is_private = False
+            if event.message and event.message.chat.type == "private":
+                is_private = True
+            elif event.callback_query and event.callback_query.message and event.callback_query.message.chat.type == "private":
+                is_private = True
+
+            if is_private:
+                is_start = event.message and event.message.text and event.message.text.startswith("/start")
+                is_code = event.message and event.message.text and "-" in event.message.text
+                if not (is_start or is_code):
+                    if event.message:
+                        await event.message.answer(PENDING_ACCESS)
+                    elif event.callback_query:
+                        await event.callback_query.answer(PENDING_ACCESS, show_alert=True)
+                    return
 
         data["bot_user"] = bot_user
         data["is_new_user"] = is_new_user
