@@ -133,18 +133,15 @@ async def _deferred_startup(bot: Bot, dp: Dispatcher):
         )
         # #endregion
 
-    logger.info("STARTUP: Starting database migrations...")
     try:
-        cfg = Config("alembic.ini")
-        await asyncio.wait_for(
-            asyncio.to_thread(command.upgrade, cfg, "head"),
-            timeout=120.0
-        )
-        logger.info("STARTUP: Migrations applied successfully.")
-    except asyncio.TimeoutError:
-        logger.error("STARTUP: Migration TIMEOUT after 120s — proceeding anyway")
+        watchdog_task = asyncio.create_task(_runtime_watchdog(bot, dp))
+        dp["watchdog_task"] = watchdog_task
+        logger.info("STARTUP: Runtime watchdog started.")
     except Exception as e:
-        logger.error("STARTUP: Migration FAILED: %s", e, exc_info=True)
+        logger.warning("STARTUP: Failed to start watchdog: %s", e)
+
+    migration_task = asyncio.create_task(_run_migrations_non_blocking())
+    dp["migration_task"] = migration_task
 
     try:
         from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats
@@ -177,12 +174,16 @@ async def _deferred_startup(bot: Bot, dp: Dispatcher):
     except Exception as e:
         logger.warning("STARTUP: Failed to notify owner: %s", e)
 
+async def _run_migrations_non_blocking():
+    logger.info("STARTUP: Starting database migrations (non-blocking)...")
     try:
-        watchdog_task = asyncio.create_task(_runtime_watchdog(bot, dp))
-        dp["watchdog_task"] = watchdog_task
-        logger.info("STARTUP: Runtime watchdog started.")
+        cfg = Config("alembic.ini")
+        await asyncio.wait_for(asyncio.to_thread(command.upgrade, cfg, "head"), timeout=120.0)
+        logger.info("STARTUP: Migrations applied successfully.")
+    except asyncio.TimeoutError:
+        logger.error("STARTUP: Migration TIMEOUT after 120s — continuing runtime")
     except Exception as e:
-        logger.warning("STARTUP: Failed to start watchdog: %s", e)
+        logger.error("STARTUP: Migration FAILED: %s", e, exc_info=True)
 
 
 async def _runtime_watchdog(bot: Bot, dp: Dispatcher):
@@ -224,6 +225,14 @@ async def on_startup(bot: Bot, **kwargs):
 
 async def on_shutdown(bot: Bot, **kwargs):
     dp = kwargs.get("dispatcher")
+    try:
+        migration_task = dp.get("migration_task") if dp else None
+        if migration_task and not migration_task.done():
+            migration_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await migration_task
+    except Exception:
+        pass
     try:
         watchdog_task = dp.get("watchdog_task") if dp else None
         if watchdog_task:
