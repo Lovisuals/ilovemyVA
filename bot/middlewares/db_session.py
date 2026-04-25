@@ -14,8 +14,10 @@ class DbSessionMiddleware(BaseMiddleware):
         data: Dict[str, Any],
     ) -> Any:
         try:
+            logger.info("DBSESSION: opening session for event_type=%s", event.event_type)
             async with async_session() as session:
                 data["session"] = session
+                logger.info("DBSESSION: session injected for event_type=%s", event.event_type)
                 return await handler(event, data)
         except Exception as e:
             logger.error("DBSESSION: Middleware failed before handler completion: %s", e, exc_info=True)

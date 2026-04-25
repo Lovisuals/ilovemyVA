@@ -46,6 +46,11 @@ class AuthMiddleware(BaseMiddleware):
         if not session:
             # We must still try to call handler even if session is missing,
             # but we can't do auth. This is a failsafe.
+            logger.error(
+                "AUTH: session missing before auth for user_id=%s event_type=%s",
+                user_id,
+                event.event_type,
+            )
             return await handler(event, data)
 
         is_private = (
@@ -98,6 +103,12 @@ class AuthMiddleware(BaseMiddleware):
 
         data["bot_user"] = bot_user
         data["is_new_user"] = is_new_user
+        logger.info(
+            "AUTH: user context injected user_id=%s role=%s is_new_user=%s",
+            bot_user.id,
+            bot_user.role,
+            is_new_user,
+        )
 
         if not bot_user.is_active:
             if event.message:
