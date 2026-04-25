@@ -544,7 +544,36 @@ tg.MainButton.onClick(() => {
   }
 
   try { localStorage.removeItem(STORE); } catch (_) {}
-  tg.sendData(JSON.stringify({ subject: subj, body }));
+  
+  const payload = { subject: subj, body: body };
+  const initData = tg.initData;
+  
+  if (initData) {
+      tg.MainButton.showProgress();
+      fetch('/api/draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+              initData: initData,
+              payload: payload
+          })
+      })
+      .then(res => res.json())
+      .then(res => {
+          tg.MainButton.hideProgress();
+          if (res.ok) {
+              tg.close();
+          } else {
+              tg.showAlert(res.error || 'Failed to save draft.');
+          }
+      })
+      .catch(err => {
+          tg.MainButton.hideProgress();
+          tg.showAlert('Network error occurred.');
+      });
+  } else {
+      tg.sendData(JSON.stringify(payload));
+  }
 });
 
 // ── Back button ───────────────────────────────────────────────────────────────

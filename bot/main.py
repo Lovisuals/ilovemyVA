@@ -151,6 +151,7 @@ def main():
         app = web.Application()
         app.router.add_get("/health", health_check)
         app.router.add_static("/static", path="static", name="static")
+        app.router.add_post("/api/draft", drafting.api_draft_handler)
         SimpleRequestHandler(
             dispatcher=dp, bot=bot, secret_token=WEBHOOK_SECRET
         ).register(app, path=f"/webhook/{quote(settings.bot.token, safe='')}")

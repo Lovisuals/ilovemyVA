@@ -677,3 +677,78 @@ async def retry_broadcast(
         )
     except TelegramBadRequest:
         pass
+
+from aiohttp import web
+import hmac
+import hashlib
+from urllib.parse import parse_qsl
+
+def verify_init_data(token: str, init_data: str):
+    try:
+        parsed_data = dict(parse_qsl(init_data))
+        if "hash" not in parsed_data:
+            return None
+        hash_val = parsed_data.pop("hash")
+        data_check_string = "\n".join(
+            f"{k}={v}" for k, v in sorted(parsed_data.items())
+        )
+        secret_key = hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()
+        calculated_hash = hmac.new(
+            secret_key, data_check_string.encode(), hashlib.sha256
+        ).hexdigest()
+        if calculated_hash != hash_val:
+            return None
+        if "user" in parsed_data:
+            return json.loads(parsed_data["user"])
+    except Exception:
+        pass
+    return None
+
+async def api_draft_handler(request: web.Request) -> web.Response:
+    bot: Bot = request.app["bot"]
+    dp = request.app["dispatcher"]
+    
+    try:
+        data = await request.json()
+    except Exception:
+        return web.json_response({"ok": False, "error": "Invalid JSON"}, status=400)
+        
+    init_data = data.get("initData")
+    payload = data.get("payload", {})
+    
+    user = verify_init_data(settings.bot.token, init_data)
+    if not user:
+        return web.json_response({"ok": False, "error": "Unauthorized. Please close and reopen the editor."}, status=401)
+        
+    user_id = user.get("id")
+    if not user_id:
+        return web.json_response({"ok": False, "error": "No user ID"}, status=401)
+        
+    subject = (payload.get("subject") or "").strip()
+    body    = (payload.get("body") or "").strip()
+    
+    if not body:
+        return web.json_response({"ok": False, "error": "Empty body"}, status=400)
+        
+    from aiogram.fsm.storage.base import StorageKey
+    key = StorageKey(bot_id=bot.id, chat_id=user_id, user_id=user_id)
+    state = FSMContext(storage=dp.storage, key=key)
+    
+    fsm_data = await state.get_data()
+    
+    if not fsm_data.get("draft_msg_id"):
+        sent = await bot.send_message(user_id, DRAFT_STEP1, reply_markup=build_step1_kb())
+        await state.update_data(draft_msg_id=sent.message_id, draft_chat_id=user_id)
+        fsm_data = await state.get_data()
+
+    await state.update_data(subject=subject, body=body)
+    await state.set_state(DraftCreation.CHOOSING_ACTION)
+
+    preview_body = body[:600] + ("…" if len(body) > 600 else "")
+    await _edit(
+        bot, fsm_data["draft_chat_id"], fsm_data["draft_msg_id"],
+        DRAFT_PREVIEW.format(subject=subject, body=preview_body),
+        build_action_kb(),
+    )
+    
+    return web.json_response({"ok": True})
