@@ -7,6 +7,7 @@ class DraftCreation(StatesGroup):
     CHOOSING_ACTION = State()
     CHOOSING_SCHED_TYPE = State()
     CHOOSING_TIME = State()
+    CHOOSING_MULTIPLE_TIMES = State()
     ENTERING_CUSTOM_TIME = State()
     CHOOSING_DAYS = State()
     ENTERING_DATETIME = State()

@@ -4,7 +4,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.callbacks import (
-    DayToggle, PostAction, RetryBroadcast, SchedType, TargetToggle, TimeSlot,
+    DayToggle, PostAction, RetryBroadcast, SchedType, TargetToggle, TimeSlot, MultiTimeToggle
 )
 from bot.keyboards.menu_kb import MENU_BTN
 from bot.config import settings
@@ -21,7 +21,7 @@ _DAYS = [
 ]
 
 _TIME_SLOTS = [
-    ("🔁 Always", "always"),
+    ("⏱ Multiple Times", "always"),
     ("06:00",     "0600"),
     ("09:00",     "0900"),
     ("12:00",     "1200"),
@@ -109,6 +109,23 @@ def build_time_kb() -> InlineKeyboardMarkup:
     builder.adjust(2)
     builder.row(
         InlineKeyboardButton(text="← Back", callback_data=TimeSlot(slot="back").pack()),
+    )
+    return builder.as_markup()
+
+
+def build_multi_time_kb(selected_slots: List[str]) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for label, slot in _TIME_SLOTS[1:-1]: # skip 'always' and 'custom'
+        icon = "✅" if slot in selected_slots else "○"
+        builder.button(text=f"{icon} {label}", callback_data=MultiTimeToggle(action="toggle", slot=slot).pack())
+    builder.adjust(2)
+    count = len(selected_slots)
+    builder.row(
+        InlineKeyboardButton(text="← Back", callback_data=MultiTimeToggle(action="back").pack()),
+        InlineKeyboardButton(
+            text=f"Continue → ({count})" if count else "Continue →",
+            callback_data=MultiTimeToggle(action="confirm").pack()
+        ),
     )
     return builder.as_markup()
 

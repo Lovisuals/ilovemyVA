@@ -46,7 +46,7 @@ class ContentItem(Base):
 
     subject: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
     sched_days: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
-    sched_time: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
+    sched_time: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     post_type: Mapped[Optional[str]] = mapped_column(String(12), nullable=True, default="draft")
     target_chat_ids: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 

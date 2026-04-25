@@ -11,13 +11,13 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.callbacks import (
-    DayToggle, NavData, PostAction, RetryBroadcast, SchedType, TargetToggle, TimeSlot,
+    DayToggle, NavData, PostAction, RetryBroadcast, SchedType, TargetToggle, TimeSlot, MultiTimeToggle
 )
 from bot.config import settings
 from bot.keyboards.draft_kb import (
     build_action_kb, build_custom_time_kb, build_datetime_kb, build_day_kb,
     build_report_kb, build_sched_type_kb, build_step1_kb, build_step2_kb,
-    build_target_kb, build_time_kb,
+    build_target_kb, build_time_kb, build_multi_time_kb
 )
 from bot.keyboards.menu_kb import build_main_menu, build_menu_row
 from bot.models.bot_user import BotUser, UserRole
@@ -390,15 +390,69 @@ async def time_selected(query: CallbackQuery, callback_data: TimeSlot, state: FS
     slot = callback_data.slot
     if slot in ("back", "custom"):
         return
+    data = await state.get_data()
+    if slot == "always":
+        await state.update_data(selected_times=[])
+        await state.set_state(DraftCreation.CHOOSING_MULTIPLE_TIMES)
+        await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
+                    "⏱ Select multiple time intervals for this broadcast:",
+                    build_multi_time_kb([]))
+        await query.answer()
+        return
+
     human     = _TIME_LABELS.get(slot, slot)
-    sched_time = "always" if slot == "always" else f"{slot[:2]}:{slot[2:]}"
-    data      = await state.get_data()
+    sched_time = f"{slot[:2]}:{slot[2:]}"
     await state.update_data(sched_time=sched_time, selected_days=list(_ALL_DAYS))
     await state.set_state(DraftCreation.CHOOSING_DAYS)
     await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
                 DRAFT_DAY_PICK.format(subject=data.get("subject", ""), time_text=human),
                 build_day_kb(list(_ALL_DAYS)))
     await query.answer()
+
+
+@router.callback_query(MultiTimeToggle.filter(), DraftCreation.CHOOSING_MULTIPLE_TIMES)
+async def multi_time_toggle(query: CallbackQuery, callback_data: MultiTimeToggle, state: FSMContext, bot: Bot):
+    action = callback_data.action
+    data = await state.get_data()
+    if action == "back":
+        await state.set_state(DraftCreation.CHOOSING_TIME)
+        await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
+                    DRAFT_TIME_PICK.format(subject=data.get("subject", "")), build_time_kb())
+        await query.answer()
+        return
+
+    selected_times = list(data.get("selected_times", []))
+    if action == "toggle":
+        slot = callback_data.slot
+        if slot in selected_times:
+            selected_times.remove(slot)
+        else:
+            selected_times.append(slot)
+        await state.update_data(selected_times=selected_times)
+        try:
+            await query.message.edit_reply_markup(reply_markup=build_multi_time_kb(selected_times))
+        except TelegramBadRequest:
+            pass
+        await query.answer()
+        return
+
+    if action == "confirm":
+        if not selected_times:
+            await query.answer("Select at least one time.", show_alert=True)
+            return
+        formatted_times = [f"{s[:2]}:{s[2:]}" for s in sorted(selected_times)]
+        sched_time = ",".join(formatted_times)
+        await state.update_data(sched_time=sched_time, selected_days=list(_ALL_DAYS))
+        await state.set_state(DraftCreation.CHOOSING_DAYS)
+        
+        time_text = ", ".join(formatted_times)
+        if len(time_text) > 40:
+            time_text = time_text[:37] + "..."
+            
+        await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
+                    DRAFT_DAY_PICK.format(subject=data.get("subject", ""), time_text=time_text),
+                    build_day_kb(list(_ALL_DAYS)))
+        await query.answer()
 
 
 @router.callback_query(TimeSlot.filter(F.slot == "back"), DraftCreation.ENTERING_CUSTOM_TIME)

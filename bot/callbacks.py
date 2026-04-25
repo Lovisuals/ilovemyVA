@@ -98,6 +98,10 @@ class TimeSlot(CallbackData, prefix="tsl"):
 class DayToggle(CallbackData, prefix="dtg"):
     day: str
 
+class MultiTimeToggle(CallbackData, prefix="mtt"):
+    action: str
+    slot: str = ""
+
 class TargetToggle(CallbackData, prefix="ttg"):
     action: str
     chat_id: int = 0
