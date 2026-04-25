@@ -164,9 +164,11 @@ async def _deferred_startup(bot: Bot, dp: Dispatcher):
 
     try:
         scheduler = await asyncio.wait_for(setup_scheduler(), timeout=15.0)
+        # APScheduler 4.0.0aX requires __aenter__ for initialization
+        await scheduler.__aenter__()
+        asyncio.create_task(scheduler.run_until_stopped())
         dp["scheduler"] = scheduler
-        await asyncio.wait_for(scheduler.start(), timeout=15.0)
-        logger.info("STARTUP: Scheduler is now active.")
+        logger.info("STARTUP: Scheduler is now active (APScheduler 4.x).")
     except (Exception, asyncio.TimeoutError) as e:
         logger.warning("STARTUP: Scheduler failed to start: %s", e)
 
@@ -246,7 +248,7 @@ async def on_shutdown(bot: Bot, **kwargs):
     try:
         scheduler = dp.get("scheduler") if dp else None
         if scheduler:
-            await scheduler.stop()
+            await scheduler.__aexit__(None, None, None)
     except Exception:
         pass
     try:
