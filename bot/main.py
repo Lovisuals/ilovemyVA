@@ -1,5 +1,4 @@
 import logging
-import secrets
 import asyncio
 import signal
 from urllib.parse import quote
@@ -35,7 +34,7 @@ from bot.utils.debug_log import write_debug_log
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-WEBHOOK_SECRET = secrets.token_hex(32)
+WEBHOOK_SECRET = settings.bot.webhook_secret
 
 
 def run_migrations():

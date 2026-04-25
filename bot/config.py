@@ -1,4 +1,5 @@
 import os
+import hashlib
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -11,6 +12,7 @@ class BotSettings(BaseSettings):
     owner_id: int = Field(..., alias="OWNER_ID")
     admin_ids: List[int] = Field(default_factory=list, alias="ADMIN_IDS")
     webhook_url: Optional[str] = Field(None, alias="WEBHOOK_URL")
+    webhook_secret: Optional[str] = Field(None, alias="WEBHOOK_SECRET")
     port: int = Field(8080, alias="PORT")
     storage_channel_id: int = Field(..., alias="STORAGE_CHANNEL_ID")
     main_channel_id: int = Field(..., alias="MAIN_CHANNEL_ID")
@@ -31,6 +33,16 @@ class BotSettings(BaseSettings):
         if isinstance(v, str):
             return [int(i.strip()) for i in v.split(",") if i.strip()]
         return v
+
+    @field_validator("webhook_secret", mode="before")
+    @classmethod
+    def resolve_webhook_secret(cls, v):
+        if v:
+            return v
+        token = os.getenv("BOT_TOKEN", "")
+        if not token:
+            return None
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()[:32]
 
 class DatabaseSettings(BaseSettings):
     url: str = Field(..., alias="DATABASE_URL")
