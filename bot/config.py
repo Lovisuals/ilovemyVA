@@ -47,7 +47,7 @@ class DatabaseSettings(BaseSettings):
 class AISettings(BaseSettings):
     antigravity_api_key: Optional[str] = Field(None, alias="ANTIGRAVITY_API_KEY")
     gemini_api_key: Optional[str] = Field(None, alias="GEMINI_API_KEY")
-    gemini_model: str = "gemini-flash-3"
+    gemini_model: str = "gemini-2.0-flash"
     temperature: float = 0.1
     max_tokens: int = 1024
     timeout_ms: int = 3000

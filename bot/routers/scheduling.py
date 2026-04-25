@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, time, timedelta
+from typing import Any
 import pytz
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, Message
@@ -68,14 +69,13 @@ async def on_recurrence_picked(
     callback_data: ScheduleRecurrence,
     state: FSMContext,
     session: AsyncSession,
-    bot: object
+    scheduler: Any = None
 ):
     recurrence = callback_data.recurrence
     data = await state.get_data()
     item_id = uuid.UUID(data["sch_item_id"])
     times = data["sch_times"]
 
-    scheduler = bot.get("scheduler")
     if not scheduler:
         await query.answer("Scheduler not available.")
         return

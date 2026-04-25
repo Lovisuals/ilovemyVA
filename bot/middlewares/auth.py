@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Dict, Optional
 
@@ -10,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.config import settings
 from bot.models.bot_user import BotUser, UserRole
 from bot.strings import ACCOUNT_DEACTIVATED, PENDING_ACCESS
+
+logger = logging.getLogger(__name__)
 
 class AuthMiddleware(BaseMiddleware):
     async def __call__(
@@ -40,7 +43,14 @@ class AuthMiddleware(BaseMiddleware):
 
         session: AsyncSession = data.get("session")
         if not session:
+            # We must still try to call handler even if session is missing,
+            # but we can't do auth. This is a failsafe.
             return await handler(event, data)
+
+        is_private = (
+            (event.message and event.message.chat.type == "private") or
+            (event.callback_query and event.callback_query.message and event.callback_query.message.chat.type == "private")
+        )
 
         try:
             stmt = select(BotUser).where(BotUser.id == user_id)
@@ -56,18 +66,34 @@ class AuthMiddleware(BaseMiddleware):
                     username=user_name,
                     full_name=full_name or "Unknown",
                     role=role,
-                    last_seen=datetime.now(timezone.utc)
+                    last_seen=datetime.now(timezone.utc),
                 )
-                session.add(bot_user)
-                await session.commit()
-                await session.refresh(bot_user)
+                # Only persist new users from private chats or if owner
+                if is_private or user_id == settings.bot.owner_id:
+                    session.add(bot_user)
+                    await session.commit()
+                    await session.refresh(bot_user)
+                # If not private, bot_user stays transient (not in DB)
             else:
                 bot_user.last_seen = datetime.now(timezone.utc)
                 bot_user.username = user_name
                 bot_user.full_name = full_name or bot_user.full_name
                 await session.commit()
-        except Exception:
-            return await handler(event, data)
+        except Exception as e:
+            # SIDE EFFECT: logs to stderr. Why necessary: only signal of silent auth DB failures.
+            logger.error("AUTH-DB-ERR [auth_middleware] user_id=%s err=%s", user_id, e, exc_info=True)
+            # Create a transient user so handler doesn't crash on missing bot_user
+            bot_user = BotUser(
+                id=user_id,
+                username=user_name,
+                full_name=full_name or "Unknown",
+                role=UserRole.PENDING,
+                last_seen=datetime.now(timezone.utc)
+            )
+            is_new_user = False
+
+        data["bot_user"] = bot_user
+        data["is_new_user"] = is_new_user
 
         if not bot_user.is_active:
             if event.message:
@@ -76,24 +102,15 @@ class AuthMiddleware(BaseMiddleware):
                 await event.callback_query.answer(ACCOUNT_DEACTIVATED, show_alert=True)
             return
 
-        if bot_user.role == UserRole.PENDING:
-            is_private = False
-            if event.message and event.message.chat.type == "private":
-                is_private = True
-            elif event.callback_query and event.callback_query.message and event.callback_query.message.chat.type == "private":
-                is_private = True
-
-            if is_private:
-                is_start = event.message and event.message.text and event.message.text.startswith("/start")
-                is_code = event.message and event.message.text and "-" in event.message.text
-                if not (is_start or is_code):
-                    if event.message:
-                        await event.message.answer(PENDING_ACCESS)
-                    elif event.callback_query:
-                        await event.callback_query.answer(PENDING_ACCESS, show_alert=True)
-                    return
-
-        data["bot_user"] = bot_user
-        data["is_new_user"] = is_new_user
+        # Restrict PENDING users in Private chats
+        if bot_user.role == UserRole.PENDING and is_private:
+            is_start = event.message and event.message.text and event.message.text.startswith("/start")
+            is_code = event.message and event.message.text and "-" in event.message.text
+            if not (is_start or is_code):
+                if event.message:
+                    await event.message.answer(PENDING_ACCESS)
+                elif event.callback_query:
+                    await event.callback_query.answer(PENDING_ACCESS, show_alert=True)
+                return
 
         return await handler(event, data)

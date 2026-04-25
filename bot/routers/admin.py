@@ -1,3 +1,4 @@
+from typing import Any
 from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
@@ -91,11 +92,12 @@ async def _render_dashboard(query: CallbackQuery, session: AsyncSession):
 async def on_health_check(query: CallbackQuery, session: AsyncSession):
     me = await query.bot.get_me()
     stats = await SystemService.get_dashboard_data(session, me.username)
+    webhook_status = "CONFIGURED" if settings.bot.webhook_url else "POLLING"
     health_report = (
         "🩺 *System Health Report*\n\n"
         f"✅ Database: {stats['db_status']}\n"
         f"✅ Scheduler: ACTIVE ({stats['scheduled']} jobs)\n"
-        f"✅ Webhook: { 'CONFIGURED' if query.bot.get('webhook_url') else 'POLLING' }\n"
+        f"✅ Webhook: {webhook_status}\n"
         "✅ Storage: 78% available\n"
         "✅ AI Agent: READY"
     )
@@ -104,8 +106,7 @@ async def on_health_check(query: CallbackQuery, session: AsyncSession):
     await query.answer("Health check complete")
 
 @router.callback_query(ControlAction.filter(F.action == "flush"))
-async def on_flush_queue(query: CallbackQuery, session: AsyncSession):
-    scheduler = query.bot.get("scheduler")
+async def on_flush_queue(query: CallbackQuery, session: AsyncSession, scheduler: Any = None):
     from bot.models.content_item import ContentItem
     from bot.services.scheduler_service import SchedulerService
     from sqlalchemy import select

@@ -1,4 +1,4 @@
-from apscheduler._schedulers.async_ import AsyncScheduler
+from apscheduler.schedulers.async_ import AsyncScheduler
 from apscheduler.datastores.sqlalchemy import SQLAlchemyDataStore
 from sqlalchemy import create_engine
 from bot.config import settings

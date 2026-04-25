@@ -345,13 +345,13 @@ async def on_datetime(message: Message, state: FSMContext, bot: Bot, session: As
     data = await state.get_data()
     await _safe_delete(message)
     try:
-        dt = datetime.strptime(text, "%d/%m/%Y %H:%M")
+        dt = datetime.strptime(text, "%d/%m/%Y %H:%M").replace(tzinfo=timezone.utc)
     except ValueError:
         await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
                     DRAFT_DATETIME_ERROR.format(error="Invalid format. Use DD/MM/YYYY HH:MM"),
                     build_datetime_kb())
         return
-    if dt < datetime.now() + timedelta(minutes=1):
+    if dt < datetime.now(timezone.utc) + timedelta(minutes=1):
         await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
                     DRAFT_DATETIME_ERROR.format(error="Must be at least 1 minute in the future."),
                     build_datetime_kb())
@@ -706,7 +706,6 @@ def verify_init_data(token: str, init_data: str):
 
 async def api_draft_handler(request: web.Request) -> web.Response:
     bot: Bot = request.app["bot"]
-    dp = request.app["dispatcher"]
     
     try:
         data = await request.json()

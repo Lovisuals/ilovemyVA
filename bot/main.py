@@ -44,7 +44,7 @@ def run_migrations():
         logger.error("Migration failed — bot may be unstable: %s", e, exc_info=True)
 
 
-async def _deferred_startup(bot: Bot):
+async def _deferred_startup(bot: Bot, dp: Dispatcher):
     try:
         from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats
         await bot.set_my_commands(
@@ -64,20 +64,22 @@ async def _deferred_startup(bot: Bot):
 
     try:
         if settings.bot.webhook_url:
+            base_url = settings.bot.webhook_url.rstrip("/")
             await bot.set_webhook(
-                url=f"{settings.bot.webhook_url}/webhook/{quote(settings.bot.token, safe='')}",
+                url=f"{base_url}/webhook/{quote(settings.bot.token, safe='')}",
                 secret_token=WEBHOOK_SECRET,
                 drop_pending_updates=True,
                 allowed_updates=["message", "callback_query", "channel_post", "chat_member", "my_chat_member"],
             )
         else:
             await bot.delete_webhook(drop_pending_updates=True)
+            asyncio.create_task(dp.start_polling(bot))
     except Exception as e:
-        logger.warning("Webhook configuration failed: %s", e)
+        logger.warning("Bot startup (webhook/polling) failed: %s", e)
 
     try:
         scheduler = await asyncio.wait_for(setup_scheduler(), timeout=10.0)
-        bot["scheduler"] = scheduler
+        dp["scheduler"] = scheduler
         await asyncio.wait_for(scheduler.start(), timeout=10.0)
     except (Exception, asyncio.TimeoutError) as e:
         logger.warning("Scheduler failed to start: %s", e)
@@ -89,13 +91,18 @@ async def _deferred_startup(bot: Bot):
 
 
 async def on_startup(bot: Bot, **kwargs):
-    asyncio.create_task(_deferred_startup(bot))
+    dp = kwargs.get("dispatcher")
+    asyncio.create_task(_deferred_startup(bot, dp))
 
 
 async def on_shutdown(bot: Bot, **kwargs):
-    scheduler = bot.get("scheduler")
-    if scheduler:
-        await scheduler.stop()
+    dp = kwargs.get("dispatcher")
+    try:
+        scheduler = dp.get("scheduler") if dp else None
+        if scheduler:
+            await scheduler.stop()
+    except Exception:
+        pass
     try:
         await bot.delete_webhook()
     except Exception:
@@ -103,21 +110,16 @@ async def on_shutdown(bot: Bot, **kwargs):
 
 
 async def health_check(_request: web.Request) -> web.Response:
-    return web.json_response({"status": "ok", "version": "1.4"})
+    return web.json_response({"status": "ok", "version": "1.4.2"})
 
 
-class BotInjectionMiddleware(BaseMiddleware):
-    def __init__(self, bot: Bot):
-        self.bot = bot
-
-    async def __call__(
-        self,
-        handler: Callable[[Update, Dict[str, Any]], Awaitable[Any]],
-        event: Update,
-        data: Dict[str, Any],
-    ) -> Any:
-        data["bot"] = self.bot
-        return await handler(event, data)
+async def editor_handler(_request: web.Request) -> web.Response:
+    api_base = (settings.bot.webhook_url or "").rstrip("/")
+    with open("static/editor.html", "r", encoding="utf-8") as f:
+        html = f.read()
+    injection = f'<script>window.__API_BASE__ = "{api_base}";</script>'
+    html = html.replace("</head>", f"{injection}\n</head>", 1)
+    return web.Response(text=html, content_type="text/html", charset="utf-8")
 
 
 def main():
@@ -137,29 +139,32 @@ def main():
         scheduling.router, broadcast.router, settings_router.router,
         moderation.router,
     )
-    dp.update.outer_middleware(BotInjectionMiddleware(bot))
-    dp.update.outer_middleware(ErrorHandlerMiddleware())
-    dp.update.outer_middleware(LoggingMiddleware())
-    dp.update.outer_middleware(DbSessionMiddleware())
-    dp.update.outer_middleware(RateLimitMiddleware())
+    
     dp.update.outer_middleware(AuthMiddleware())
+    dp.update.outer_middleware(RateLimitMiddleware())
+    dp.update.outer_middleware(DbSessionMiddleware())
+    dp.update.outer_middleware(LoggingMiddleware())
+    dp.update.outer_middleware(ErrorHandlerMiddleware())
+    
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
 
+    app = web.Application()
+    app.router.add_get("/health", health_check)
+    app.router.add_get("/static/editor.html", editor_handler)
+    app.router.add_static("/static", path="static", name="static")
+    app.router.add_post("/api/draft", drafting.api_draft_handler)
+
     if settings.bot.webhook_url:
         logger.info("Starting in webhook mode on port %s", settings.bot.port)
-        app = web.Application()
-        app.router.add_get("/health", health_check)
-        app.router.add_static("/static", path="static", name="static")
-        app.router.add_post("/api/draft", drafting.api_draft_handler)
         SimpleRequestHandler(
             dispatcher=dp, bot=bot, secret_token=WEBHOOK_SECRET
         ).register(app, path=f"/webhook/{quote(settings.bot.token, safe='')}")
-        setup_application(app, dp, bot=bot)
-        web.run_app(app, host="0.0.0.0", port=settings.bot.port)
     else:
-        logger.info("Starting in polling mode")
-        asyncio.run(dp.start_polling(bot))
+        logger.info("Starting in polling mode (with healthcheck server)")
+
+    setup_application(app, dp, bot=bot)
+    web.run_app(app, host="0.0.0.0", port=settings.bot.port)
 
 
 if __name__ == "__main__":

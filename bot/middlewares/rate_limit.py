@@ -58,8 +58,9 @@ class RateLimitMiddleware(BaseMiddleware):
                 session.add(limit_event)
 
             await session.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            # SIDE EFFECT: logs to debug stream. Why necessary: identifies silent DB connection issues affecting rate limiting.
+            logger.debug("RATELIMIT-DB-ERR user_id=%s: %s", user_id, e)
 
         return await handler(event, data)
 
