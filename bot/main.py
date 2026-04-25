@@ -47,32 +47,7 @@ def run_migrations():
 async def _deferred_startup(bot: Bot, dp: Dispatcher):
     logger.info("STARTUP: Running deferred startup tasks...")
     
-    # Run migrations in a thread to avoid blocking the loop
-    logger.info("STARTUP: Running migrations...")
-    try:
-        cfg = Config("alembic.ini")
-        await asyncio.to_thread(command.upgrade, cfg, "head")
-        logger.info("STARTUP: Migrations complete.")
-    except Exception as e:
-        logger.error("STARTUP: Migration failed: %s", e, exc_info=True)
-
-    try:
-        from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats
-        await bot.set_my_commands(
-            [
-                BotCommand(command="start",    description="Open main menu"),
-                BotCommand(command="menu",     description="Main menu"),
-                BotCommand(command="new",      description="Create a new draft"),
-                BotCommand(command="content",  description="Content library"),
-                BotCommand(command="users",    description="Manage team"),
-                BotCommand(command="settings", description="Settings"),
-                BotCommand(command="admin",    description="Control centre"),
-            ],
-            scope=BotCommandScopeAllPrivateChats(),
-        )
-    except Exception as e:
-        logger.warning("Failed to register commands: %s", e)
-
+    # 1. Register Webhook/Polling IMMEDIATELY so the bot is "online"
     try:
         if settings.bot.webhook_url:
             base_url = settings.bot.webhook_url.rstrip("/")
@@ -83,26 +58,56 @@ async def _deferred_startup(bot: Bot, dp: Dispatcher):
                 drop_pending_updates=True,
                 allowed_updates=["message", "callback_query", "channel_post", "chat_member", "my_chat_member"],
             )
-            logger.info("STARTUP: Webhook set to %s%s", base_url, webhook_path)
+            logger.info("STARTUP: Webhook registered at %s%s", base_url, webhook_path)
         else:
             await bot.delete_webhook(drop_pending_updates=True)
             asyncio.create_task(dp.start_polling(bot))
             logger.info("STARTUP: Polling started.")
     except Exception as e:
-        logger.warning("Bot startup (webhook/polling) failed: %s", e)
+        logger.error("STARTUP: Webhook/Polling registration CRITICAL FAIL: %s", e)
 
+    # 2. Run Migrations in background
+    logger.info("STARTUP: Initializing database migrations...")
+    try:
+        cfg = Config("alembic.ini")
+        await asyncio.to_thread(command.upgrade, cfg, "head")
+        logger.info("STARTUP: Migrations successfully applied.")
+    except Exception as e:
+        logger.error("STARTUP: Migration failed (bot may be unstable): %s", e, exc_info=True)
+
+    # 3. Set Commands
+    try:
+        from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats
+        await bot.set_my_commands(
+            [
+                BotCommand(command="start",    description="Open main menu"),
+                BotCommand(command="menu",     description="Main menu"),
+                BotCommand(command="new",      description="Create a new post"),
+                BotCommand(command="content",  description="Content library"),
+                BotCommand(command="users",    description="Manage team"),
+                BotCommand(command="settings", description="Settings"),
+                BotCommand(command="admin",    description="Control centre"),
+            ],
+            scope=BotCommandScopeAllPrivateChats(),
+        )
+        logger.info("STARTUP: Bot commands registered.")
+    except Exception as e:
+        logger.warning("STARTUP: Failed to register commands: %s", e)
+
+    # 4. Start Scheduler
     try:
         scheduler = await asyncio.wait_for(setup_scheduler(), timeout=10.0)
         dp["scheduler"] = scheduler
         await asyncio.wait_for(scheduler.start(), timeout=10.0)
-        logger.info("STARTUP: Scheduler started.")
+        logger.info("STARTUP: Scheduler is now active.")
     except (Exception, asyncio.TimeoutError) as e:
-        logger.warning("Scheduler failed to start: %s", e)
+        logger.warning("STARTUP: Scheduler failed to start: %s", e)
 
+    # 5. Notify Owner
     try:
-        await bot.send_message(settings.bot.owner_id, BOT_ONLINE)
+        await bot.send_message(settings.bot.owner_id, f"✅ **MedLocum Bot Online**\nVersion: 1.4.4\nStatus: Active")
     except Exception as e:
-        logger.warning("Failed to notify owner on startup: %s", e)
+        logger.warning("STARTUP: Failed to notify owner: %s", e)
 
 
 async def on_startup(bot: Bot, **kwargs):
