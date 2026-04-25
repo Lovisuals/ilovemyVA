@@ -12,6 +12,7 @@ from bot.config import settings
 from bot.keyboards.menu_kb import build_main_menu
 from bot.models.bot_user import BotUser, UserRole
 from bot.services.user_service import UserService
+from bot.utils.debug_log import write_debug_log
 from bot.strings import (
     ADMIN_CODE_FOR_USER, CODE_ACCEPTED, CODE_EXPIRED,
     INVALID_CODE, NEW_USER_NOTIFICATION,
@@ -25,6 +26,15 @@ router = Router()
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, bot_user: BotUser, is_new_user: bool = False):
+    # #region agent log
+    write_debug_log(
+        run_id="pre-fix",
+        hypothesis_id="H5",
+        location="bot/routers/onboarding.py:cmd_start",
+        message="Start command handler invoked",
+        data={"user_id": bot_user.id, "role": str(bot_user.role), "is_new_user": is_new_user},
+    )
+    # #endregion
     if bot_user.role == UserRole.SUPERADMIN:
         await message.answer(WELCOME_SUPERADMIN)
         await message.answer(MENU_ADMIN, reply_markup=build_main_menu(bot_user.role))
