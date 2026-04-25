@@ -394,7 +394,7 @@ async def time_selected(query: CallbackQuery, callback_data: TimeSlot, state: FS
     if slot == "always":
         await state.update_data(selected_times=[])
         await state.set_state(DraftCreation.CHOOSING_MULTIPLE_TIMES)
-        await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
+        await _edit(bot, query.message.chat.id, query.message.message_id,
                     "⏱ Select multiple time intervals for this broadcast:",
                     build_multi_time_kb([]))
         await query.answer()
@@ -404,7 +404,7 @@ async def time_selected(query: CallbackQuery, callback_data: TimeSlot, state: FS
     sched_time = f"{slot[:2]}:{slot[2:]}"
     await state.update_data(sched_time=sched_time, selected_days=list(_ALL_DAYS))
     await state.set_state(DraftCreation.CHOOSING_DAYS)
-    await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
+    await _edit(bot, query.message.chat.id, query.message.message_id,
                 DRAFT_DAY_PICK.format(subject=data.get("subject", ""), time_text=human),
                 build_day_kb(list(_ALL_DAYS)))
     await query.answer()
@@ -416,7 +416,7 @@ async def multi_time_toggle(query: CallbackQuery, callback_data: MultiTimeToggle
     data = await state.get_data()
     if action == "back":
         await state.set_state(DraftCreation.CHOOSING_TIME)
-        await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
+        await _edit(bot, query.message.chat.id, query.message.message_id,
                     DRAFT_TIME_PICK.format(subject=data.get("subject", "")), build_time_kb())
         await query.answer()
         return
@@ -460,7 +460,7 @@ async def multi_time_toggle(query: CallbackQuery, callback_data: MultiTimeToggle
 async def custom_time_back(query: CallbackQuery, state: FSMContext, bot: Bot):
     data = await state.get_data()
     await state.set_state(DraftCreation.CHOOSING_TIME)
-    await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
+    await _edit(bot, query.message.chat.id, query.message.message_id,
                 DRAFT_TIME_PICK.format(subject=data.get("subject", "")), build_time_kb())
     await query.answer()
 
