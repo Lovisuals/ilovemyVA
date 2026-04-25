@@ -72,6 +72,17 @@ async def _deferred_startup(bot: Bot, dp: Dispatcher):
                 allowed_updates=["message", "callback_query", "channel_post", "chat_member", "my_chat_member"],
             ), timeout=15.0)
             logger.info("STARTUP: Webhook registered at %s%s", base_url, webhook_path)
+            try:
+                webhook_info = await asyncio.wait_for(bot.get_webhook_info(), timeout=10.0)
+                logger.info(
+                    "STARTUP: Webhook info url=%s pending=%s last_error_date=%s last_error_message=%s",
+                    webhook_info.url,
+                    webhook_info.pending_update_count,
+                    webhook_info.last_error_date,
+                    webhook_info.last_error_message,
+                )
+            except Exception as webhook_info_err:
+                logger.warning("STARTUP: Failed to fetch webhook info: %s", webhook_info_err)
             # #region agent log
             write_debug_log(
                 run_id="pre-fix",
