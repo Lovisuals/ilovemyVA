@@ -5,6 +5,7 @@ from bot.models.audit_log import AuditLog
 from bot.models.content_item import ContentItem, ContentBucket
 from bot.models.bot_user import BotUser
 from bot.models.connected_chat import ConnectedChat
+from bot.config import settings
 
 class SystemService:
     @staticmethod
