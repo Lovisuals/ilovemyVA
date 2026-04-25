@@ -140,11 +140,11 @@ def main():
         moderation.router,
     )
     
-    dp.update.outer_middleware(AuthMiddleware())
-    dp.update.outer_middleware(RateLimitMiddleware())
-    dp.update.outer_middleware(DbSessionMiddleware())
-    dp.update.outer_middleware(LoggingMiddleware())
     dp.update.outer_middleware(ErrorHandlerMiddleware())
+    dp.update.outer_middleware(LoggingMiddleware())
+    dp.update.outer_middleware(DbSessionMiddleware())
+    dp.update.outer_middleware(RateLimitMiddleware())
+    dp.update.outer_middleware(AuthMiddleware())
     
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
