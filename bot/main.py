@@ -46,6 +46,16 @@ def run_migrations():
 
 async def _deferred_startup(bot: Bot, dp: Dispatcher):
     logger.info("STARTUP: Running deferred startup tasks...")
+    
+    # Run migrations in a thread to avoid blocking the loop
+    logger.info("STARTUP: Running migrations...")
+    try:
+        cfg = Config("alembic.ini")
+        await asyncio.to_thread(command.upgrade, cfg, "head")
+        logger.info("STARTUP: Migrations complete.")
+    except Exception as e:
+        logger.error("STARTUP: Migration failed: %s", e, exc_info=True)
+
     try:
         from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats
         await bot.set_my_commands(
@@ -66,15 +76,18 @@ async def _deferred_startup(bot: Bot, dp: Dispatcher):
     try:
         if settings.bot.webhook_url:
             base_url = settings.bot.webhook_url.rstrip("/")
+            webhook_path = "/webhook/main"
             await bot.set_webhook(
-                url=f"{base_url}/webhook/{quote(settings.bot.token, safe='')}",
+                url=f"{base_url}{webhook_path}",
                 secret_token=WEBHOOK_SECRET,
                 drop_pending_updates=True,
                 allowed_updates=["message", "callback_query", "channel_post", "chat_member", "my_chat_member"],
             )
+            logger.info("STARTUP: Webhook set to %s%s", base_url, webhook_path)
         else:
             await bot.delete_webhook(drop_pending_updates=True)
             asyncio.create_task(dp.start_polling(bot))
+            logger.info("STARTUP: Polling started.")
     except Exception as e:
         logger.warning("Bot startup (webhook/polling) failed: %s", e)
 
@@ -82,6 +95,7 @@ async def _deferred_startup(bot: Bot, dp: Dispatcher):
         scheduler = await asyncio.wait_for(setup_scheduler(), timeout=10.0)
         dp["scheduler"] = scheduler
         await asyncio.wait_for(scheduler.start(), timeout=10.0)
+        logger.info("STARTUP: Scheduler started.")
     except (Exception, asyncio.TimeoutError) as e:
         logger.warning("Scheduler failed to start: %s", e)
 
@@ -111,7 +125,7 @@ async def on_shutdown(bot: Bot, **kwargs):
 
 
 async def health_check(_request: web.Request) -> web.Response:
-    return web.json_response({"status": "ok", "version": "1.4.2"})
+    return web.json_response({"status": "ok", "version": "1.4.3"})
 
 
 async def editor_handler(_request: web.Request) -> web.Response:
@@ -125,8 +139,7 @@ async def editor_handler(_request: web.Request) -> web.Response:
 
 def main():
     logger.info("MAIN: Starting bot initialization...")
-    run_migrations()
-    logger.info("MAIN: Migrations complete/skipped")
+    # Migrations moved to _deferred_startup to avoid blocking web server start
     
     bot = Bot(token=settings.bot.token)
     dp = Dispatcher()
@@ -162,10 +175,11 @@ def main():
     app.router.add_post("/api/draft", drafting.api_draft_handler)
 
     if settings.bot.webhook_url:
-        logger.info("Starting in webhook mode on port %s", settings.bot.port)
+        webhook_path = "/webhook/main"
+        logger.info("Starting in webhook mode on port %s (Path: %s)", settings.bot.port, webhook_path)
         SimpleRequestHandler(
             dispatcher=dp, bot=bot, secret_token=WEBHOOK_SECRET
-        ).register(app, path=f"/webhook/{quote(settings.bot.token, safe='')}")
+        ).register(app, path=webhook_path)
     else:
         logger.info("Starting in polling mode (with healthcheck server)")
 
