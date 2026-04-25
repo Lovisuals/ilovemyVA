@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.config import settings
 from bot.models.moderation_event import ModerationEvent, ModerationEventType
 from bot.utils.spam_keywords import check_spam_regex
-from bot.agents.gemini_client import GeminiClient
+
 from bot.keyboards.moderation_kb import build_moderation_actions
 
 class ModerationService:
@@ -15,21 +15,8 @@ class ModerationService:
         if not text:
             return
 
-        is_spam = False
-        confidence = 0.0
-
-        if settings.ai_enabled:
-            client = GeminiClient()
-            try:
-                result = await client.classify_spam(text)
-                is_spam = result.is_spam
-                confidence = result.confidence
-            except Exception:
-                is_spam = check_spam_regex(text)
-                confidence = 0.5 if is_spam else 0.0
-        else:
-            is_spam = check_spam_regex(text)
-            confidence = 0.5 if is_spam else 0.0
+        is_spam = check_spam_regex(text)
+        confidence = 0.5 if is_spam else 0.0
 
         if is_spam and confidence > 0.85:
             try:

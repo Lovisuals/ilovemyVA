@@ -44,24 +44,15 @@ class DatabaseSettings(BaseSettings):
             url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
         return url
 
-class AISettings(BaseSettings):
-    antigravity_api_key: Optional[str] = Field(None, alias="ANTIGRAVITY_API_KEY")
-    gemini_api_key: Optional[str] = Field(None, alias="GEMINI_API_KEY")
-    gemini_model: str = "gemini-2.0-flash"
-    temperature: float = 0.1
-    max_tokens: int = 1024
-    timeout_ms: int = 3000
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     bot: BotSettings
     database: DatabaseSettings
-    ai: AISettings
 
-    @property
-    def ai_enabled(self) -> bool:
-        return bool(self.ai.antigravity_api_key and self.ai.gemini_api_key)
+
 
     @property
     def redis_url(self) -> Optional[str]:
@@ -69,6 +60,5 @@ class Settings(BaseSettings):
 
 settings = Settings(
     bot=BotSettings(),
-    database=DatabaseSettings(),
-    ai=AISettings()
+    database=DatabaseSettings()
 )
