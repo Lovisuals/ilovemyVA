@@ -23,10 +23,13 @@ async def cmd_admin(message: Message, bot_user: BotUser, session: AsyncSession):
     me = await message.bot.get_me()
     stats = await SystemService.get_dashboard_data(session, me.username)
     text = (
-        "🕹 *Control Centre*\n\n"
-        f"🌐 *System:* {stats['db_status']} | 🤖 *@{stats['bot_username']}*\n"
-        f"📅 *Scheduled:* {stats['scheduled']} | 📝 *Drafts:* {stats['drafts']}\n"
-        f"👥 *Users:* {stats['users']} | 🏘 *Chats:* {stats['chats']}\n\n"
+        "🕹 *APEX COMMAND CENTER*\n"
+        "─" * 20 + "\n"
+        f"🌐 *DB:* `{stats['db_status']}` | 🤖 *BOT:* `@{stats['bot_username']}`\n"
+        f"📦 *VAULT:* `{stats['storage_vault']}` (`{stats['vault_status']}`)\n"
+        "─" * 20 + "\n"
+        f"📅 *QUEUED:* `{stats['scheduled']}`  | 📝 *DRAFTS:* `{stats['drafts']}`\n"
+        f"👥 *TEAM:* `{stats['users']}`      | 🏘 *CHATS:* `{stats['chats']}`\n\n"
         "*Recent Activity:*\n"
         f"{stats['audit_trail']}\n"
         f"🕒 _Pulse: {stats['timestamp']}_"
@@ -76,10 +79,13 @@ async def _render_dashboard(query: CallbackQuery, session: AsyncSession):
     me = await query.bot.get_me()
     stats = await SystemService.get_dashboard_data(session, me.username)
     text = (
-        "🕹 *Control Centre*\n\n"
-        f"🌐 *System:* {stats['db_status']} | 🤖 *@{stats['bot_username']}*\n"
-        f"📅 *Scheduled:* {stats['scheduled']} | 📝 *Drafts:* {stats['drafts']}\n"
-        f"👥 *Users:* {stats['users']} | 🏘 *Chats:* {stats['chats']}\n\n"
+        "🕹 *APEX COMMAND CENTER*\n"
+        "─" * 20 + "\n"
+        f"🌐 *DB:* `{stats['db_status']}` | 🤖 *BOT:* `@{stats['bot_username']}`\n"
+        f"📦 *VAULT:* `{stats['storage_vault']}` (`{stats['vault_status']}`)\n"
+        "─" * 20 + "\n"
+        f"📅 *QUEUED:* `{stats['scheduled']}`  | 📝 *DRAFTS:* `{stats['drafts']}`\n"
+        f"👥 *TEAM:* `{stats['users']}`      | 🏘 *CHATS:* `{stats['chats']}`\n\n"
         "*Recent Activity:*\n"
         f"{stats['audit_trail']}\n"
         f"🕒 _Pulse: {stats['timestamp']}_"

@@ -1,10 +1,3 @@
-"""connected_chats_structured_drafts
-
-Revision ID: 0003
-Revises: 0002
-Create Date: 2026-04-24
-
-"""
 from alembic import op
 
 revision = '0003'

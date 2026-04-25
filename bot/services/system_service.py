@@ -27,16 +27,26 @@ class SystemService:
         stmt_chats = select(func.count()).select_from(ConnectedChat)
         chats_count = (await session.execute(stmt_chats)).scalar() or 0
 
-        stmt_audit = select(AuditLog).order_by(AuditLog.created_at.desc()).limit(3)
+        stmt_audit = select(AuditLog).order_by(AuditLog.created_at.desc()).limit(5)
         audit_logs = (await session.execute(stmt_audit)).scalars().all()
         
         audit_trail = ""
         for log in audit_logs:
             time_str = log.created_at.strftime("%H:%M")
-            audit_trail += f"• [{time_str}] {log.event_code}: {log.target_id or 'system'}\n"
+            audit_trail += f"• [{time_str}] {log.event_code}\n"
         if not audit_trail:
             audit_trail = "No recent activity."
 
+        vault_status = "LINKED"
+        storage_vault = settings.bot.storage_channel_id or "Not Configured"
+        if settings.bot.storage_channel_id:
+            try:
+                await session.execute(select(1))
+            except Exception:
+                vault_status = "STALL"
+        else:
+            vault_status = "OFFLINE"
+        
         return {
             "db_status": db_status,
             "bot_username": bot_username,
@@ -45,5 +55,7 @@ class SystemService:
             "users": users_count,
             "chats": chats_count,
             "audit_trail": audit_trail,
+            "storage_vault": storage_vault,
+            "vault_status": vault_status,
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
         }

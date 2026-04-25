@@ -73,7 +73,7 @@ async def _warn_and_maybe_kick(
 
 @router.message(
     F.chat.type.in_({"group", "supergroup"}),
-    F.from_user.is_bot == False,  # noqa: E712
+    F.from_user.is_bot == False,
 )
 async def automod_filter(message: Message, bot: Bot, session: AsyncSession) -> None:
     gs = await GroupSettingsService.get(session, message.chat.id)

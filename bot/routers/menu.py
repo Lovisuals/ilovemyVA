@@ -7,21 +7,19 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.callbacks import NavData
-from bot.keyboards.bucket_kb import build_bucket_list, build_bucket_panel
+from bot.keyboards.bucket_kb import build_bucket_list
 from bot.keyboards.menu_kb import build_main_menu, build_menu_row
 from bot.keyboards.user_mgmt_kb import build_user_list
 from bot.models.bot_user import BotUser, UserRole
 from bot.models.content_item import ContentBucket, ContentItem
-from bot.services.bucket_service import BucketService
 from bot.services.persona_service import PersonaService
 from bot.services.user_service import UserService
-from bot.strings import (
-    ADMIN_PANEL_HEADER, HELP_TEXT,
-    MENU_ADMIN, MENU_PENDING, MENU_USER, SETTINGS_TEXT, STATS_TEXT,
-)
 from bot.keyboards.admin_kb import build_admin_dashboard
 from bot.keyboards.settings_kb import build_settings_panel
 from bot.services.system_service import SystemService
+from bot.strings import (
+    HELP_TEXT, MENU_ADMIN, MENU_PENDING, MENU_USER, STATS_TEXT,
+)
 
 router = Router()
 
@@ -78,13 +76,11 @@ async def nav_settings(query: CallbackQuery, bot_user: BotUser):
         await query.answer()
         return
     
-    ai_enabled = True
-    welcome_enabled = False
-    timezone = "Europe/London (UTC+1)"
-    
-    kb = build_settings_panel(ai_enabled, welcome_enabled, timezone)
+    kb = build_settings_panel(True, False, "Africa/Lagos")
     await query.message.edit_text(
-        "⚙️ *System Settings*\n\nConfigure global bot behavior and integrations.",
+        "⚙️ *SYSTEM CONFIGURATION*\n"
+        "─" * 20 + "\n"
+        "Global parameters and operational toggles.",
         reply_markup=kb,
         parse_mode="Markdown"
     )
@@ -100,10 +96,13 @@ async def nav_admin(query: CallbackQuery, bot_user: BotUser, session: AsyncSessi
     stats = await SystemService.get_dashboard_data(session, me.username)
     
     text = (
-        "🕹 *Control Centre*\n\n"
-        f"🌐 *System:* {stats['db_status']} | 🤖 *@{stats['bot_username']}*\n"
-        f"📅 *Scheduled:* {stats['scheduled']} | 📝 *Drafts:* {stats['drafts']}\n"
-        f"👥 *Users:* {stats['users']} | 🏘 *Chats:* {stats['chats']}\n\n"
+        "🕹 *APEX COMMAND CENTER*\n"
+        "─" * 20 + "\n"
+        f"🌐 *DB:* `{stats['db_status']}` | 🤖 *BOT:* `@{stats['bot_username']}`\n"
+        f"📦 *VAULT:* `{stats['storage_vault']}` (`{stats['vault_status']}`)\n"
+        "─" * 20 + "\n"
+        f"📅 *QUEUED:* `{stats['scheduled']}`  | 📝 *DRAFTS:* `{stats['drafts']}`\n"
+        f"👥 *TEAM:* `{stats['users']}`      | 🏘 *CHATS:* `{stats['chats']}`\n\n"
         "*Recent Activity:*\n"
         f"{stats['audit_trail']}\n"
         f"🕒 _Pulse: {stats['timestamp']}_"
