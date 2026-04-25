@@ -42,7 +42,7 @@ DRAFT_STEP1_ERROR = (
 DRAFT_STEP2 = (
     "✏️ New Post\n"
     f"{_SEP}\n"
-    "📌 {{subject}}\n"
+    "📌 {subject}\n"
     f"{_SEP}\n"
     "Step 2 of 2 — Body\n\n"
     "Send the post content — text, formatting, hashtags:"
@@ -50,8 +50,8 @@ DRAFT_STEP2 = (
 DRAFT_PREVIEW = (
     "✏️ New Post — Preview\n"
     f"{_SEP}\n"
-    "📌 {{subject}}\n\n"
-    "{{body}}\n"
+    "📌 {subject}\n\n"
+    "{body}\n"
     f"{_SEP}\n"
     "What would you like to do?"
 )
@@ -87,15 +87,15 @@ DRAFT_CUSTOM_TIME_ERROR = (
 DRAFT_DAY_PICK = (
     "✏️ New Post — Days\n"
     f"{_SEP}\n"
-    "📌 {{subject}}\n"
-    "⏰ Every day at {{time_text}}\n"
+    "📌 {subject}\n"
+    "⏰ Every day at {time_text}\n"
     f"{_SEP}\n"
     "Which days should this post run?"
 )
 DRAFT_DATETIME_PICK = (
     "✏️ New Post — Date & Time\n"
     f"{_SEP}\n"
-    "📌 {{subject}}\n"
+    "📌 {subject}\n"
     "📅 One-time post\n"
     f"{_SEP}\n"
     "When should this post go live?\n\n"
@@ -105,15 +105,15 @@ DRAFT_DATETIME_PICK = (
 DRAFT_DATETIME_ERROR = (
     "✏️ New Post — Date & Time\n"
     f"{_SEP}\n"
-    "⚠️ {{error}}\n\n"
+    "⚠️ {error}\n\n"
     "Send date and time:\n"
     "DD/MM/YYYY HH:MM"
 )
 DRAFT_TARGETS = (
     "✏️ New Post — Targets\n"
     f"{_SEP}\n"
-    "📌 {{subject}}\n"
-    "{{schedule_line}}\n"
+    "📌 {subject}\n"
+    "{schedule_line}\n"
     f"{_SEP}\n"
     "Select where to send this post:"
 )

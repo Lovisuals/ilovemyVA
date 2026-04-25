@@ -64,7 +64,7 @@ async def _edit(bot: Bot, chat_id: int, msg_id: int, text: str, markup) -> None:
         await bot.edit_message_text(
             chat_id=chat_id, message_id=msg_id, text=text, reply_markup=markup
         )
-    except TelegramBadRequest:
+    except Exception:
         pass
 
 
@@ -440,26 +440,20 @@ async def multi_time_toggle(query: CallbackQuery, callback_data: MultiTimeToggle
         if not selected_times:
             await query.answer("Select at least one time.", show_alert=True)
             return
-        try:
-            formatted_times = [f"{s[:2]}:{s[2:]}" for s in sorted(selected_times)]
-            sched_time = ",".join(formatted_times)
-            await state.update_data(sched_time=sched_time, selected_days=list(_ALL_DAYS))
-            await state.set_state(DraftCreation.CHOOSING_DAYS)
+
+        formatted_times = [f"{s[:2]}:{s[2:]}" for s in sorted(selected_times)]
+        sched_time = ",".join(formatted_times)
+        await state.update_data(sched_time=sched_time, selected_days=list(_ALL_DAYS))
+        await state.set_state(DraftCreation.CHOOSING_DAYS)
+        
+        time_text = ", ".join(formatted_times)
+        if len(time_text) > 40:
+            time_text = time_text[:37] + "..."
             
-            time_text = ", ".join(formatted_times)
-            if len(time_text) > 40:
-                time_text = time_text[:37] + "..."
-                
-            await query.message.edit_text(
-                text=DRAFT_DAY_PICK.format(subject=data.get("subject", ""), time_text=time_text),
-                reply_markup=build_day_kb(list(_ALL_DAYS))
-            )
-            await query.answer()
-        except Exception as e:
-            import traceback
-            err_str = str(e)
-            if not err_str: err_str = type(e).__name__
-            await query.answer(f"Error: {err_str}", show_alert=True)
+        await _edit(bot, query.message.chat.id, query.message.message_id,
+                    DRAFT_DAY_PICK.format(subject=data.get("subject", ""), time_text=time_text),
+                    build_day_kb(list(_ALL_DAYS)))
+        await query.answer()
 
 
 @router.callback_query(TimeSlot.filter(F.slot == "back"), DraftCreation.ENTERING_CUSTOM_TIME)
