@@ -28,6 +28,9 @@ def get_url():
             break
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
+    if "sslmode" not in url:
+        sep = "&" if "?" in url else "?"
+        url += f"{sep}sslmode=prefer"
     sep = "&" if "?" in url else "?"
     url += f"{sep}connect_timeout=10"
     return url
@@ -54,10 +57,15 @@ def run_migrations_online() -> None:
         connect_args={"options": "-c lock_timeout=30000"},
     )
 
+    print(f"DEBUG: Connecting to {url.split('@')[-1]}...")
     with connectable.connect() as connection:
+        print("DEBUG: Connection established. Configuring context...")
         context.configure(connection=connection, target_metadata=target_metadata)
+        print("DEBUG: Beginning transaction...")
         with context.begin_transaction():
+            print("DEBUG: Running migrations...")
             context.run_migrations()
+            print("DEBUG: Migrations complete.")
 
 if context.is_offline_mode():
     run_migrations_offline()
