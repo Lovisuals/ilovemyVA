@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 
 WEBHOOK_SECRET = settings.bot.webhook_secret
 LAST_WEBHOOK_HIT_MONOTONIC = time.monotonic()
+WEBHOOK_IDLE_FALLBACK_SECONDS = 45
 
 
 def run_migrations():
@@ -202,12 +203,13 @@ async def _runtime_watchdog(bot: Bot, dp: Dispatcher):
             )
             if (
                 settings.bot.webhook_url
-                and webhook_idle_seconds > 120
+                and webhook_idle_seconds > WEBHOOK_IDLE_FALLBACK_SECONDS
                 and not dp.get("polling_fallback_started")
             ):
                 logger.warning(
-                    "WATCHDOG: no webhook ingress for %ss, enabling polling fallback",
+                    "WATCHDOG: no webhook ingress for %ss (threshold=%ss), enabling polling fallback",
                     webhook_idle_seconds,
+                    WEBHOOK_IDLE_FALLBACK_SECONDS,
                 )
                 await asyncio.wait_for(bot.delete_webhook(drop_pending_updates=False), timeout=10.0)
                 dp["polling_fallback_started"] = True
@@ -215,7 +217,7 @@ async def _runtime_watchdog(bot: Bot, dp: Dispatcher):
                 logger.warning("WATCHDOG: polling fallback started")
         except Exception as e:
             logger.warning("WATCHDOG: failed to fetch bot/webhook status: %s", e)
-        await asyncio.sleep(30)
+        await asyncio.sleep(10)
 
 
 async def on_startup(bot: Bot, **kwargs):
