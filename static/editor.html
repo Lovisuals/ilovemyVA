@@ -550,8 +550,15 @@ tg.MainButton.onClick(() => {
   
   if (initData) {
       tg.MainButton.showProgress();
-      const apiBase = (window.__API_BASE__ || '').replace(/\/$/, '');
-      const draftUrl = apiBase ? `${apiBase}/api/draft` : '/api/draft';
+      const rawApiBase = (window.__API_BASE__ ?? '').toString().trim();
+      let draftUrl = '/api/draft';
+      if (rawApiBase) {
+          try {
+              draftUrl = new URL('/api/draft', rawApiBase).toString();
+          } catch (_) {
+              draftUrl = '/api/draft';
+          }
+      }
       fetch(draftUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -582,7 +589,7 @@ tg.MainButton.onClick(() => {
       })
       .catch(err => {
           tg.MainButton.hideProgress();
-          tg.showAlert('Send failed: ' + err.message);
+          tg.showAlert('Send failed: ' + err.message + '\nURL: ' + draftUrl);
       });
   } else {
       tg.sendData(JSON.stringify(payload));
