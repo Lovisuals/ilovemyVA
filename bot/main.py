@@ -1,6 +1,7 @@
 import logging
 import secrets
 import asyncio
+import signal
 from urllib.parse import quote
 from typing import Any, Awaitable, Callable, Dict
 
@@ -203,6 +204,18 @@ async def editor_handler(_request: web.Request) -> web.Response:
     return web.Response(text=html, content_type="text/html", charset="utf-8")
 
 
+@web.middleware
+async def request_trace_middleware(request: web.Request, handler):
+    if request.path == "/webhook/main":
+        logger.info(
+            "WEBHOOK: inbound request method=%s remote=%s ua=%s",
+            request.method,
+            request.remote,
+            request.headers.get("User-Agent"),
+        )
+    return await handler(request)
+
+
 def main():
     logger.info("MAIN: Starting bot initialization...")
     # #region agent log
@@ -244,6 +257,7 @@ def main():
     dp.shutdown.register(on_shutdown)
 
     app = web.Application()
+    app.middlewares.append(request_trace_middleware)
     app.router.add_get("/health", health_check)
     app.router.add_get("/static/editor.html", editor_handler)
     app.router.add_static("/static", path="static", name="static")
@@ -260,6 +274,12 @@ def main():
 
     setup_application(app, dp, bot=bot)
     logger.info("MAIN: Handlers configured. Starting web server...")
+    try:
+        loop = asyncio.get_event_loop()
+        loop.add_signal_handler(signal.SIGTERM, lambda: logger.warning("LIFECYCLE: SIGTERM received"))
+        loop.add_signal_handler(signal.SIGINT, lambda: logger.warning("LIFECYCLE: SIGINT received"))
+    except Exception as sig_err:
+        logger.warning("LIFECYCLE: signal handlers not installed: %s", sig_err)
     web.run_app(app, host="0.0.0.0", port=settings.bot.port)
 
 
