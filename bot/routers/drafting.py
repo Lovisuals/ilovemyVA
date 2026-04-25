@@ -26,6 +26,7 @@ from bot.models.content_item import ContentBucket
 from bot.services.connected_chat_service import ConnectedChatService
 from bot.services.content_service import ContentService
 from bot.services.persona_service import PersonaService
+from bot.utils.debug_log import write_debug_log
 from bot.states.draft_states import DraftCreation
 from bot.strings import (
     DRAFT_CUSTOM_TIME, DRAFT_CUSTOM_TIME_ERROR, DRAFT_DAY_PICK,
@@ -685,8 +686,26 @@ from urllib.parse import parse_qsl
 
 def verify_init_data(token: str, init_data: str):
     try:
-        parsed_data = dict(parse_qsl(init_data))
+        # #region agent log
+        write_debug_log(
+            run_id="pre-fix",
+            hypothesis_id="H10",
+            location="bot/routers/drafting.py:verify_init_data",
+            message="Verifying Telegram initData",
+            data={"has_init_data": bool(init_data), "init_data_len": len(init_data or "")},
+        )
+        # #endregion
+        parsed_data = dict(parse_qsl(init_data or ""))
         if "hash" not in parsed_data:
+            # #region agent log
+            write_debug_log(
+                run_id="pre-fix",
+                hypothesis_id="H10",
+                location="bot/routers/drafting.py:verify_init_data",
+                message="initData missing hash",
+                data={},
+            )
+            # #endregion
             return None
         hash_val = parsed_data.pop("hash")
         data_check_string = "\n".join(
@@ -697,10 +716,28 @@ def verify_init_data(token: str, init_data: str):
             secret_key, data_check_string.encode(), hashlib.sha256
         ).hexdigest()
         if calculated_hash != hash_val:
+            # #region agent log
+            write_debug_log(
+                run_id="pre-fix",
+                hypothesis_id="H10",
+                location="bot/routers/drafting.py:verify_init_data",
+                message="initData hash mismatch",
+                data={"calculated_prefix": calculated_hash[:12], "received_prefix": hash_val[:12]},
+            )
+            # #endregion
             return None
         if "user" in parsed_data:
             return json.loads(parsed_data["user"])
-    except Exception:
+    except Exception as e:
+        # #region agent log
+        write_debug_log(
+            run_id="pre-fix",
+            hypothesis_id="H10",
+            location="bot/routers/drafting.py:verify_init_data",
+            message="Exception while verifying initData",
+            data={"error": str(e)},
+        )
+        # #endregion
         pass
     return None
 
@@ -714,9 +751,31 @@ async def api_draft_handler(request: web.Request) -> web.Response:
         
     init_data = data.get("initData")
     payload = data.get("payload", {})
+    # #region agent log
+    write_debug_log(
+        run_id="pre-fix",
+        hypothesis_id="H11",
+        location="bot/routers/drafting.py:api_draft_handler",
+        message="Received /api/draft payload",
+        data={
+            "has_init_data": bool(init_data),
+            "subject_len": len((payload.get("subject") or "").strip()),
+            "body_len": len((payload.get("body") or "").strip()),
+        },
+    )
+    # #endregion
     
     user = verify_init_data(settings.bot.token, init_data)
     if not user:
+        # #region agent log
+        write_debug_log(
+            run_id="pre-fix",
+            hypothesis_id="H11",
+            location="bot/routers/drafting.py:api_draft_handler",
+            message="Draft API unauthorized after initData verification",
+            data={},
+        )
+        # #endregion
         return web.json_response({"ok": False, "error": "Unauthorized. Please close and reopen the editor."}, status=401)
         
     user_id = user.get("id")
@@ -750,5 +809,14 @@ async def api_draft_handler(request: web.Request) -> web.Response:
         DRAFT_PREVIEW.format(subject=subject, body=preview_body),
         build_action_kb(),
     )
+    # #region agent log
+    write_debug_log(
+        run_id="pre-fix",
+        hypothesis_id="H11",
+        location="bot/routers/drafting.py:api_draft_handler",
+        message="Draft API processed successfully",
+        data={"user_id": user_id},
+    )
+    # #endregion
     
     return web.json_response({"ok": True})

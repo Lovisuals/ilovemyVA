@@ -550,7 +550,9 @@ tg.MainButton.onClick(() => {
   
   if (initData) {
       tg.MainButton.showProgress();
-      fetch('/api/draft', {
+      const apiBase = (window.__API_BASE__ || '').replace(/\/$/, '');
+      const draftUrl = apiBase ? `${apiBase}/api/draft` : '/api/draft';
+      fetch(draftUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -558,8 +560,19 @@ tg.MainButton.onClick(() => {
               payload: payload
           })
       })
-      .then(res => res.json())
-      .then(res => {
+      .then(async (res) => {
+          let bodyJson = null;
+          try {
+              bodyJson = await res.json();
+          } catch (_) {
+              throw new Error(`Draft API returned non-JSON (${res.status})`);
+          }
+          if (!res.ok) {
+              throw new Error(bodyJson?.error || `Draft API failed (${res.status})`);
+          }
+          return bodyJson;
+      })
+      .then((res) => {
           tg.MainButton.hideProgress();
           if (res.ok) {
               tg.close();
@@ -569,7 +582,7 @@ tg.MainButton.onClick(() => {
       })
       .catch(err => {
           tg.MainButton.hideProgress();
-          tg.showAlert('Network error: ' + err.message);
+          tg.showAlert('Send failed: ' + err.message);
       });
   } else {
       tg.sendData(JSON.stringify(payload));
