@@ -45,6 +45,7 @@ def run_migrations():
 
 
 async def _deferred_startup(bot: Bot, dp: Dispatcher):
+    logger.info("STARTUP: Running deferred startup tasks...")
     try:
         from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats
         await bot.set_my_commands(
@@ -123,9 +124,14 @@ async def editor_handler(_request: web.Request) -> web.Response:
 
 
 def main():
+    logger.info("MAIN: Starting bot initialization...")
     run_migrations()
+    logger.info("MAIN: Migrations complete/skipped")
+    
     bot = Bot(token=settings.bot.token)
     dp = Dispatcher()
+    
+    logger.info("MAIN: Including routers...")
     dp.include_routers(
         chat_tracker_router.router,
         automod_router.router,
@@ -164,6 +170,7 @@ def main():
         logger.info("Starting in polling mode (with healthcheck server)")
 
     setup_application(app, dp, bot=bot)
+    logger.info("MAIN: Handlers configured. Starting web server...")
     web.run_app(app, host="0.0.0.0", port=settings.bot.port)
 
 

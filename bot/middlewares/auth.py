@@ -66,6 +66,7 @@ class AuthMiddleware(BaseMiddleware):
                     username=user_name,
                     full_name=full_name or "Unknown",
                     role=role,
+                    is_active=True,
                     last_seen=datetime.now(timezone.utc),
                 )
                 # Only persist new users from private chats or if owner
@@ -88,9 +89,11 @@ class AuthMiddleware(BaseMiddleware):
                 username=user_name,
                 full_name=full_name or "Unknown",
                 role=UserRole.PENDING,
+                is_active=True,
                 last_seen=datetime.now(timezone.utc)
             )
             is_new_user = False
+            logger.info("AUTH [auth_middleware] Created transient user for %s due to DB error", user_id)
 
         data["bot_user"] = bot_user
         data["is_new_user"] = is_new_user

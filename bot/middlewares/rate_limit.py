@@ -3,6 +3,9 @@ from typing import Any, Awaitable, Callable, Dict
 
 from aiogram import BaseMiddleware
 from aiogram.types import Update
+import logging
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
