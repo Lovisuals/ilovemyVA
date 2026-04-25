@@ -31,7 +31,7 @@ class ContentItem(Base):
     scheduled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     recurrence: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     tz_name: Mapped[str] = mapped_column(String(64), default="Africa/Lagos")
-    scheduler_job_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    scheduler_job_id: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
     tone_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     tone_flags: Mapped[List[str]] = mapped_column(JSONB, default=list)
     disclaimer_appended: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -43,10 +43,10 @@ class ContentItem(Base):
     archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     tags: Mapped[List[str]] = mapped_column(JSONB, default=list)
     content_metadata: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
-
+ 
     subject: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
     sched_days: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
-    sched_time: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    sched_time: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     post_type: Mapped[Optional[str]] = mapped_column(String(12), nullable=True, default="draft")
     target_chat_ids: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
