@@ -19,15 +19,20 @@ async def cmd_admin(message: Message, bot_user: BotUser, session: AsyncSession):
     if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
         return
 
-    bucket = ContentBucket.DRAFTS
-    items, total = await BucketService.get_page(session, bucket, 1, 10)
-    total_pages = (total + 9) // 10
-
-    kb = build_bucket_panel(bucket.value, items, 1, max(1, total_pages))
-    await message.answer(
-        ADMIN_PANEL_HEADER.format(bucket=bucket.value.capitalize()),
-        reply_markup=kb
+    me = await message.bot.get_me()
+    stats = await SystemService.get_dashboard_data(session, me.username)
+    text = (
+        "🕹 *Control Centre*\n\n"
+        f"🌐 *System:* {stats['db_status']} | 🤖 *@{stats['bot_username']}*\n"
+        f"📅 *Scheduled:* {stats['scheduled']} | 📝 *Drafts:* {stats['drafts']}\n"
+        f"👥 *Users:* {stats['users']} | 🏘 *Chats:* {stats['chats']}\n\n"
+        "*Recent Activity:*\n"
+        f"{stats['audit_trail']}\n"
+        f"🕒 _Pulse: {stats['timestamp']}_"
     )
+    from bot.keyboards.admin_kb import build_admin_dashboard
+    kb = build_admin_dashboard()
+    await message.answer(text, reply_markup=kb, parse_mode="Markdown")
 
 @router.callback_query(BucketSelect.filter())
 async def on_bucket_select(query: CallbackQuery, callback_data: BucketSelect, bot_user: BotUser, session: AsyncSession):
@@ -66,11 +71,26 @@ async def on_bucket_page(query: CallbackQuery, callback_data: BucketPage, bot_us
         reply_markup=kb
     )
 
+async def _render_dashboard(query: CallbackQuery, session: AsyncSession):
+    me = await query.bot.get_me()
+    stats = await SystemService.get_dashboard_data(session, me.username)
+    text = (
+        "🕹 *Control Centre*\n\n"
+        f"🌐 *System:* {stats['db_status']} | 🤖 *@{stats['bot_username']}*\n"
+        f"📅 *Scheduled:* {stats['scheduled']} | 📝 *Drafts:* {stats['drafts']}\n"
+        f"👥 *Users:* {stats['users']} | 🏘 *Chats:* {stats['chats']}\n\n"
+        "*Recent Activity:*\n"
+        f"{stats['audit_trail']}\n"
+        f"🕒 _Pulse: {stats['timestamp']}_"
+    )
+    from bot.keyboards.admin_kb import build_admin_dashboard
+    kb = build_admin_dashboard()
+    await query.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+
 @router.callback_query(ControlAction.filter(F.action == "health"))
 async def on_health_check(query: CallbackQuery, session: AsyncSession):
     me = await query.bot.get_me()
     stats = await SystemService.get_dashboard_data(session, me.username)
-    
     health_report = (
         "🩺 *System Health Report*\n\n"
         f"✅ Database: {stats['db_status']}\n"
@@ -79,26 +99,77 @@ async def on_health_check(query: CallbackQuery, session: AsyncSession):
         "✅ Storage: 78% available\n"
         "✅ AI Agent: READY"
     )
-    
     from bot.keyboards.admin_kb import build_admin_dashboard
     await query.message.edit_text(health_report, reply_markup=build_admin_dashboard(), parse_mode="Markdown")
     await query.answer("Health check complete")
 
 @router.callback_query(ControlAction.filter(F.action == "flush"))
 async def on_flush_queue(query: CallbackQuery, session: AsyncSession):
-    await query.answer("Queue flushed (simulated)", show_alert=True)
+    scheduler = query.bot.get("scheduler")
+    from bot.models.content_item import ContentItem
+    from bot.services.scheduler_service import SchedulerService
+    from sqlalchemy import select
+
+    result = await session.execute(select(ContentItem).where(ContentItem.bucket == ContentBucket.SCHEDULED))
+    items = result.scalars().all()
+    
+    count = 0
+    for item in items:
+        if item.scheduler_job_id and scheduler:
+            await SchedulerService.cancel_job(scheduler, item.scheduler_job_id)
+        item.bucket = ContentBucket.DRAFTS
+        item.scheduler_job_id = None
+        item.scheduled_at = None
+        count += 1
+    
+    await session.commit()
+    await query.answer(f"Queue flushed. {count} scheduled items reverted to drafts.", show_alert=True)
+    await _render_dashboard(query, session)
 
 @router.callback_query(ControlAction.filter(F.action == "sync"))
 async def on_sync_chats(query: CallbackQuery, session: AsyncSession):
+    from bot.services.connected_chat_service import ConnectedChatService
     await query.answer("Syncing chats...", show_alert=False)
-    await query.message.edit_text("🔄 *Syncing Chats...*\n\nVerifying connections to 12 medical community groups.", parse_mode="Markdown")
-    import asyncio
-    await asyncio.sleep(1)
-    from bot.keyboards.admin_kb import build_admin_dashboard
-    await query.message.edit_text("✅ *Sync Complete*\n\nAll 12 groups verified and active.", reply_markup=build_admin_dashboard(), parse_mode="Markdown")
+    
+    chats = await ConnectedChatService.list_active(session)
+    active = 0
+    removed = 0
+    for chat in chats:
+        try:
+            member = await query.bot.get_chat_member(chat.chat_id, query.bot.id)
+            if member.status in ("left", "kicked"):
+                await session.delete(chat)
+                removed += 1
+            else:
+                active += 1
+        except Exception:
+            await session.delete(chat)
+            removed += 1
+    
+    await session.commit()
+    await query.answer(f"Sync complete: {active} active, {removed} removed.", show_alert=True)
+    await _render_dashboard(query, session)
 
 @router.callback_query(ControlAction.filter(F.action == "broadcast"))
-async def on_quick_broadcast(query: CallbackQuery):
-    await query.answer("Redirecting to Broadcast module...")
+async def on_quick_broadcast(query: CallbackQuery, session: AsyncSession):
+    bucket = ContentBucket.DRAFTS
+    items, total = await BucketService.get_page(session, bucket, 1, 10)
+    total_pages = (total + 9) // 10
+    kb = build_bucket_panel(bucket.value, items, 1, max(1, total_pages))
+    await query.message.edit_text(
+        ADMIN_PANEL_HEADER.format(bucket=bucket.value.capitalize()),
+        reply_markup=kb
+    )
+    await query.answer()
+
+@router.callback_query(ControlAction.filter(F.action == "audit"))
+async def on_audit_log(query: CallbackQuery, session: AsyncSession):
+    me = await query.bot.get_me()
+    stats = await SystemService.get_dashboard_data(session, me.username)
+    audit = stats.get('audit_trail', 'No recent activity.')
+    
+    text = f"📜 *System Audit Log*\n\n{audit}"
     from bot.keyboards.admin_kb import build_admin_dashboard
-    await query.message.edit_text("📢 *Quick Broadcast*\n\nThis feature is being wired to the broadcast module.", reply_markup=build_admin_dashboard(), parse_mode="Markdown")
+    kb = build_admin_dashboard()
+    await query.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+    await query.answer()
