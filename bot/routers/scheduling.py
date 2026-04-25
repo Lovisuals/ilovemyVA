@@ -51,10 +51,12 @@ async def on_time_picked(query: CallbackQuery, callback_data: ScheduleTime, stat
         await query.answer()
         return
 
-    if time_str in selected_times:
-        selected_times.remove(time_str)
+    # Convert HHMM to HH:MM if needed
+    clean_time = time_str if ":" in time_str else f"{time_str[:2]}:{time_str[2:]}"
+    if clean_time in selected_times:
+        selected_times.remove(clean_time)
     else:
-        selected_times.append(time_str)
+        selected_times.append(clean_time)
         selected_times.sort()
         
     await state.update_data(sch_times=selected_times)

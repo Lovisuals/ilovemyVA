@@ -12,7 +12,7 @@ def build_time_picker(item_id: str, selected_times: list[str] = None) -> InlineK
         if h == 0:
             h = 12
         ampm = "AM" if hour < 12 else "PM"
-        time_str = f"{hour:02d}:00"
+        time_str = f"{hour:02d}00"
         display_str = f"{h:02d}:00 {ampm}"
         
         text = f"✅ {display_str}" if time_str in selected_times else display_str
@@ -22,6 +22,7 @@ def build_time_picker(item_id: str, selected_times: list[str] = None) -> InlineK
     
     count = len(selected_times)
     confirm_text = f"✅ Confirm ({count})" if count else "✅ Confirm"
+    from aiogram.types import InlineKeyboardButton
     builder.row(InlineKeyboardButton(text=confirm_text, callback_data=ScheduleTime(item_id=item_id, time_str="confirm").pack()))
     
     return builder.as_markup()
