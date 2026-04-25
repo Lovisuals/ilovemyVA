@@ -1,6 +1,6 @@
 import logging
 import asyncio
-import signal
+import contextlib
 from urllib.parse import quote
 from typing import Any, Awaitable, Callable, Dict
 
@@ -72,6 +72,11 @@ async def _deferred_startup(bot: Bot, dp: Dispatcher):
                 allowed_updates=["message", "callback_query", "channel_post", "chat_member", "my_chat_member"],
             ), timeout=15.0)
             logger.info("STARTUP: Webhook registered at %s%s", base_url, webhook_path)
+            try:
+                me = await asyncio.wait_for(bot.get_me(), timeout=10.0)
+                logger.info("STARTUP: Bot identity username=@%s id=%s", me.username, me.id)
+            except Exception as me_err:
+                logger.warning("STARTUP: Failed to fetch bot identity: %s", me_err)
             try:
                 webhook_info = await asyncio.wait_for(bot.get_webhook_info(), timeout=10.0)
                 logger.info(
@@ -170,6 +175,30 @@ async def _deferred_startup(bot: Bot, dp: Dispatcher):
     except Exception as e:
         logger.warning("STARTUP: Failed to notify owner: %s", e)
 
+    try:
+        watchdog_task = asyncio.create_task(_runtime_watchdog(bot))
+        dp["watchdog_task"] = watchdog_task
+        logger.info("STARTUP: Runtime watchdog started.")
+    except Exception as e:
+        logger.warning("STARTUP: Failed to start watchdog: %s", e)
+
+
+async def _runtime_watchdog(bot: Bot):
+    while True:
+        try:
+            webhook_info = await asyncio.wait_for(bot.get_webhook_info(), timeout=10.0)
+            me = await asyncio.wait_for(bot.get_me(), timeout=10.0)
+            logger.info(
+                "WATCHDOG: bot=@%s pending=%s last_error_date=%s last_error_message=%s",
+                me.username,
+                webhook_info.pending_update_count,
+                webhook_info.last_error_date,
+                webhook_info.last_error_message,
+            )
+        except Exception as e:
+            logger.warning("WATCHDOG: failed to fetch bot/webhook status: %s", e)
+        await asyncio.sleep(30)
+
 
 async def on_startup(bot: Bot, **kwargs):
     dp = kwargs.get("dispatcher")
@@ -178,6 +207,14 @@ async def on_startup(bot: Bot, **kwargs):
 
 async def on_shutdown(bot: Bot, **kwargs):
     dp = kwargs.get("dispatcher")
+    try:
+        watchdog_task = dp.get("watchdog_task") if dp else None
+        if watchdog_task:
+            watchdog_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await watchdog_task
+    except Exception:
+        pass
     try:
         scheduler = dp.get("scheduler") if dp else None
         if scheduler:
@@ -273,12 +310,6 @@ def main():
 
     setup_application(app, dp, bot=bot)
     logger.info("MAIN: Handlers configured. Starting web server...")
-    try:
-        loop = asyncio.get_event_loop()
-        loop.add_signal_handler(signal.SIGTERM, lambda: logger.warning("LIFECYCLE: SIGTERM received"))
-        loop.add_signal_handler(signal.SIGINT, lambda: logger.warning("LIFECYCLE: SIGINT received"))
-    except Exception as sig_err:
-        logger.warning("LIFECYCLE: signal handlers not installed: %s", sig_err)
     web.run_app(app, host="0.0.0.0", port=settings.bot.port)
 
 
