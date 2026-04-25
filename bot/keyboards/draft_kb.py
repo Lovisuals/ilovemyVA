@@ -115,10 +115,12 @@ def build_time_kb() -> InlineKeyboardMarkup:
 
 def build_multi_time_kb(selected_slots: List[str]) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    for label, slot in _TIME_SLOTS[1:-1]: # skip 'always' and 'custom'
+    for h in range(24):
+        slot = f"{h:02d}00"
+        label = f"{h:02d}:00"
         icon = "✅" if slot in selected_slots else "○"
         builder.button(text=f"{icon} {label}", callback_data=MultiTimeToggle(action="toggle", slot=slot).pack())
-    builder.adjust(2)
+    builder.adjust(4)
     count = len(selected_slots)
     builder.row(
         InlineKeyboardButton(text="← Back", callback_data=MultiTimeToggle(action="back").pack()),
