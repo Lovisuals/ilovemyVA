@@ -569,7 +569,7 @@ tg.MainButton.onClick(() => {
       })
       .catch(err => {
           tg.MainButton.hideProgress();
-          tg.showAlert('Network error occurred.');
+          tg.showAlert('Network error: ' + err.message);
       });
   } else {
       tg.sendData(JSON.stringify(payload));
