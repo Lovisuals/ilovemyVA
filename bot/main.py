@@ -1,6 +1,7 @@
 import logging
 import asyncio
 import contextlib
+import time
 from urllib.parse import quote
 from typing import Any, Awaitable, Callable, Dict
 
@@ -35,6 +36,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 WEBHOOK_SECRET = settings.bot.webhook_secret
+LAST_WEBHOOK_HIT_MONOTONIC = time.monotonic()
 
 
 def run_migrations():
@@ -176,25 +178,40 @@ async def _deferred_startup(bot: Bot, dp: Dispatcher):
         logger.warning("STARTUP: Failed to notify owner: %s", e)
 
     try:
-        watchdog_task = asyncio.create_task(_runtime_watchdog(bot))
+        watchdog_task = asyncio.create_task(_runtime_watchdog(bot, dp))
         dp["watchdog_task"] = watchdog_task
         logger.info("STARTUP: Runtime watchdog started.")
     except Exception as e:
         logger.warning("STARTUP: Failed to start watchdog: %s", e)
 
 
-async def _runtime_watchdog(bot: Bot):
+async def _runtime_watchdog(bot: Bot, dp: Dispatcher):
     while True:
         try:
             webhook_info = await asyncio.wait_for(bot.get_webhook_info(), timeout=10.0)
             me = await asyncio.wait_for(bot.get_me(), timeout=10.0)
+            webhook_idle_seconds = round(time.monotonic() - LAST_WEBHOOK_HIT_MONOTONIC, 1)
             logger.info(
-                "WATCHDOG: bot=@%s pending=%s last_error_date=%s last_error_message=%s",
+                "WATCHDOG: bot=@%s pending=%s idle_s=%s last_error_date=%s last_error_message=%s",
                 me.username,
                 webhook_info.pending_update_count,
+                webhook_idle_seconds,
                 webhook_info.last_error_date,
                 webhook_info.last_error_message,
             )
+            if (
+                settings.bot.webhook_url
+                and webhook_idle_seconds > 120
+                and not dp.get("polling_fallback_started")
+            ):
+                logger.warning(
+                    "WATCHDOG: no webhook ingress for %ss, enabling polling fallback",
+                    webhook_idle_seconds,
+                )
+                await asyncio.wait_for(bot.delete_webhook(drop_pending_updates=False), timeout=10.0)
+                dp["polling_fallback_started"] = True
+                asyncio.create_task(dp.start_polling(bot))
+                logger.warning("WATCHDOG: polling fallback started")
         except Exception as e:
             logger.warning("WATCHDOG: failed to fetch bot/webhook status: %s", e)
         await asyncio.sleep(30)
@@ -242,7 +259,9 @@ async def editor_handler(_request: web.Request) -> web.Response:
 
 @web.middleware
 async def request_trace_middleware(request: web.Request, handler):
+    global LAST_WEBHOOK_HIT_MONOTONIC
     if request.path == "/webhook/main":
+        LAST_WEBHOOK_HIT_MONOTONIC = time.monotonic()
         logger.info(
             "WEBHOOK: inbound request method=%s remote=%s ua=%s",
             request.method,
