@@ -30,7 +30,7 @@ from bot.middlewares.rate_limit import RateLimitMiddleware
 from bot.middlewares.logging_mw import LoggingMiddleware
 from bot.middlewares.error_handler import ErrorHandlerMiddleware
 from bot.scheduler.setup import setup_scheduler
-from bot.utils.debug_log import write_debug_log
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -59,15 +59,7 @@ async def _deferred_startup(bot: Bot, dp: Dispatcher):
         if settings.bot.webhook_url:
             base_url = settings.bot.webhook_url.rstrip("/")
             webhook_path = "/webhook/main"
-            # #region agent log
-            write_debug_log(
-                run_id="pre-fix",
-                hypothesis_id="H1",
-                location="bot/main.py:_deferred_startup",
-                message="Attempting webhook registration",
-                data={"mode": "webhook", "base_url": base_url, "path": webhook_path},
-            )
-            # #endregion
+
             await asyncio.wait_for(bot.set_webhook(
                 url=f"{base_url}{webhook_path}",
                 secret_token=WEBHOOK_SECRET,
@@ -91,48 +83,16 @@ async def _deferred_startup(bot: Bot, dp: Dispatcher):
                 )
             except Exception as webhook_info_err:
                 logger.warning("STARTUP: Failed to fetch webhook info: %s", webhook_info_err)
-            # #region agent log
-            write_debug_log(
-                run_id="pre-fix",
-                hypothesis_id="H1",
-                location="bot/main.py:_deferred_startup",
-                message="Webhook registered successfully",
-                data={"mode": "webhook", "base_url": base_url, "path": webhook_path},
-            )
-            # #endregion
+
         else:
-            # #region agent log
-            write_debug_log(
-                run_id="pre-fix",
-                hypothesis_id="H1",
-                location="bot/main.py:_deferred_startup",
-                message="Attempting polling startup",
-                data={"mode": "polling"},
-            )
-            # #endregion
+
             await asyncio.wait_for(bot.delete_webhook(drop_pending_updates=True), timeout=10.0)
             asyncio.create_task(dp.start_polling(bot))
             logger.info("STARTUP: Polling started.")
-            # #region agent log
-            write_debug_log(
-                run_id="pre-fix",
-                hypothesis_id="H1",
-                location="bot/main.py:_deferred_startup",
-                message="Polling started successfully",
-                data={"mode": "polling"},
-            )
-            # #endregion
+
     except Exception as e:
         logger.error("STARTUP: Webhook/Polling registration FAIL: %s", e)
-        # #region agent log
-        write_debug_log(
-            run_id="pre-fix",
-            hypothesis_id="H1",
-            location="bot/main.py:_deferred_startup",
-            message="Webhook/polling registration failed",
-            data={"error": str(e), "mode": "webhook" if settings.bot.webhook_url else "polling"},
-        )
-        # #endregion
+
 
     try:
         watchdog_task = asyncio.create_task(_runtime_watchdog(bot, dp))
@@ -286,15 +246,7 @@ async def request_trace_middleware(request: web.Request, handler):
 
 def main():
     logger.info("MAIN: Starting bot initialization...")
-    # #region agent log
-    write_debug_log(
-        run_id="pre-fix",
-        hypothesis_id="H8",
-        location="bot/main.py:main",
-        message="Bot main() entered",
-        data={"webhook_url_configured": bool(settings.bot.webhook_url), "port": settings.bot.port},
-    )
-    # #endregion
+
     # Migrations moved to _deferred_startup to avoid blocking web server start
     
     bot = Bot(token=settings.bot.token)

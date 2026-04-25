@@ -414,54 +414,47 @@ async def time_selected(query: CallbackQuery, callback_data: TimeSlot, state: FS
 async def multi_time_toggle(query: CallbackQuery, callback_data: MultiTimeToggle, state: FSMContext, bot: Bot):
     action = callback_data.action
     data = await state.get_data()
-    write_debug_log(run_id="multi_time", hypothesis_id="btn_hang", location="multi_time_toggle", 
-                    message=f"Action received: {action}", data={"callback_data": str(callback_data)})
     
-    try:
-        if action == "back":
-            await state.set_state(DraftCreation.CHOOSING_TIME)
-            await _edit(bot, query.message.chat.id, query.message.message_id,
-                        DRAFT_TIME_PICK.format(subject=data.get("subject", "")), build_time_kb())
-            await query.answer()
+    if action == "back":
+        await state.set_state(DraftCreation.CHOOSING_TIME)
+        await _edit(bot, query.message.chat.id, query.message.message_id,
+                    DRAFT_TIME_PICK.format(subject=data.get("subject", "")), build_time_kb())
+        await query.answer()
+        return
+
+    selected_times = list(data.get("selected_times", []))
+    if action == "toggle":
+        slot = callback_data.slot
+        if slot in selected_times:
+            selected_times.remove(slot)
+        else:
+            selected_times.append(slot)
+        await state.update_data(selected_times=selected_times)
+        try:
+            await query.message.edit_reply_markup(reply_markup=build_multi_time_kb(selected_times))
+        except TelegramBadRequest:
+            pass
+        await query.answer()
+        return
+
+    if action == "confirm":
+        if not selected_times:
+            await query.answer("Select at least one time.", show_alert=True)
             return
 
-        selected_times = list(data.get("selected_times", []))
-        if action == "toggle":
-            slot = callback_data.slot
-            if slot in selected_times:
-                selected_times.remove(slot)
-            else:
-                selected_times.append(slot)
-            await state.update_data(selected_times=selected_times)
-            try:
-                await query.message.edit_reply_markup(reply_markup=build_multi_time_kb(selected_times))
-            except TelegramBadRequest:
-                pass
-            await query.answer()
-            return
-
-        if action == "confirm":
-            if not selected_times:
-                await query.answer("Select at least one time.", show_alert=True)
-                return
-
-            formatted_times = [f"{s[:2]}:{s[2:]}" for s in sorted(selected_times)]
-            sched_time = ",".join(formatted_times)
-            await state.update_data(sched_time=sched_time, selected_days=list(_ALL_DAYS))
-            await state.set_state(DraftCreation.CHOOSING_DAYS)
+        formatted_times = [f"{s[:2]}:{s[2:]}" for s in sorted(selected_times)]
+        sched_time = ",".join(formatted_times)
+        await state.update_data(sched_time=sched_time, selected_days=list(_ALL_DAYS))
+        await state.set_state(DraftCreation.CHOOSING_DAYS)
+        
+        time_text = ", ".join(formatted_times)
+        if len(time_text) > 40:
+            time_text = time_text[:37] + "..."
             
-            time_text = ", ".join(formatted_times)
-            if len(time_text) > 40:
-                time_text = time_text[:37] + "..."
-                
-            await _edit(bot, query.message.chat.id, query.message.message_id,
-                        DRAFT_DAY_PICK.format(subject=data.get("subject", ""), time_text=time_text),
-                        build_day_kb(list(_ALL_DAYS)))
-            await query.answer()
-    except Exception as e:
-        write_debug_log(run_id="multi_time", hypothesis_id="btn_hang", location="multi_time_toggle_error", 
-                        message=f"Exception: {str(e)}", data={"trace": "error"})
-        await query.answer(f"Diagnostic Error: {str(e)}", show_alert=True)
+        await _edit(bot, query.message.chat.id, query.message.message_id,
+                    DRAFT_DAY_PICK.format(subject=data.get("subject", ""), time_text=time_text),
+                    build_day_kb(list(_ALL_DAYS)))
+        await query.answer()
 
 
 @router.callback_query(TimeSlot.filter(F.slot == "back"), DraftCreation.ENTERING_CUSTOM_TIME)
