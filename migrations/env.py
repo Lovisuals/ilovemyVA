@@ -49,7 +49,9 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = get_url()
+    db_url = get_url()
+    configuration["sqlalchemy.url"] = db_url
+    
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",
@@ -57,15 +59,26 @@ def run_migrations_online() -> None:
         connect_args={"options": "-c lock_timeout=30000"},
     )
 
-    print(f"DEBUG: Connecting to {url.split('@')[-1]}...")
-    with connectable.connect() as connection:
-        print("DEBUG: Connection established. Configuring context...")
-        context.configure(connection=connection, target_metadata=target_metadata)
-        print("DEBUG: Beginning transaction...")
-        with context.begin_transaction():
-            print("DEBUG: Running migrations...")
-            context.run_migrations()
-            print("DEBUG: Migrations complete.")
+    masked_url = db_url.split("@")[-1] if "@" in db_url else "..."
+    print(f"DEBUG: Connecting to {masked_url}...")
+    
+    try:
+        with connectable.connect() as connection:
+            print("DEBUG: Connection established. Configuring context...")
+            context.configure(
+                connection=connection, 
+                target_metadata=target_metadata,
+                compare_type=True
+            )
+            
+            print("DEBUG: Beginning transaction...")
+            with context.begin_transaction():
+                print("DEBUG: Running migrations...")
+                context.run_migrations()
+                print("DEBUG: Migrations complete.")
+    except Exception as e:
+        print(f"ERROR: Migration connection/run failed: {e}")
+        raise
 
 if context.is_offline_mode():
     run_migrations_offline()

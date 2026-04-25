@@ -731,6 +731,7 @@ async def api_draft_handler(request: web.Request) -> web.Response:
         
     from aiogram.fsm.storage.base import StorageKey
     key = StorageKey(bot_id=bot.id, chat_id=user_id, user_id=user_id)
+    dp = request.app["dispatcher"]
     state = FSMContext(storage=dp.storage, key=key)
     
     fsm_data = await state.get_data()

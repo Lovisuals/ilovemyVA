@@ -45,6 +45,9 @@ def run_migrations():
 
 
 async def _deferred_startup(bot: Bot, dp: Dispatcher):
+    logger.info("STARTUP: Waiting 5s for web server stability...")
+    await asyncio.sleep(5)
+    
     logger.info("STARTUP: Running deferred startup tasks...")
     
     # 1. Register Webhook/Polling IMMEDIATELY so the bot is "online"
@@ -52,33 +55,36 @@ async def _deferred_startup(bot: Bot, dp: Dispatcher):
         if settings.bot.webhook_url:
             base_url = settings.bot.webhook_url.rstrip("/")
             webhook_path = "/webhook/main"
-            await bot.set_webhook(
+            await asyncio.wait_for(bot.set_webhook(
                 url=f"{base_url}{webhook_path}",
                 secret_token=WEBHOOK_SECRET,
                 drop_pending_updates=True,
                 allowed_updates=["message", "callback_query", "channel_post", "chat_member", "my_chat_member"],
-            )
+            ), timeout=15.0)
             logger.info("STARTUP: Webhook registered at %s%s", base_url, webhook_path)
         else:
-            await bot.delete_webhook(drop_pending_updates=True)
+            await asyncio.wait_for(bot.delete_webhook(drop_pending_updates=True), timeout=10.0)
             asyncio.create_task(dp.start_polling(bot))
             logger.info("STARTUP: Polling started.")
     except Exception as e:
-        logger.error("STARTUP: Webhook/Polling registration CRITICAL FAIL: %s", e)
+        logger.error("STARTUP: Webhook/Polling registration FAIL: %s", e)
 
-    # 2. Run Migrations in background
-    logger.info("STARTUP: Initializing database migrations...")
+    logger.info("STARTUP: Starting database migrations...")
     try:
         cfg = Config("alembic.ini")
-        await asyncio.to_thread(command.upgrade, cfg, "head")
-        logger.info("STARTUP: Migrations successfully applied.")
+        await asyncio.wait_for(
+            asyncio.to_thread(command.upgrade, cfg, "head"),
+            timeout=120.0
+        )
+        logger.info("STARTUP: Migrations applied successfully.")
+    except asyncio.TimeoutError:
+        logger.error("STARTUP: Migration TIMEOUT after 120s — proceeding anyway")
     except Exception as e:
-        logger.error("STARTUP: Migration failed (bot may be unstable): %s", e, exc_info=True)
+        logger.error("STARTUP: Migration FAILED: %s", e, exc_info=True)
 
-    # 3. Set Commands
     try:
         from aiogram.types import BotCommand, BotCommandScopeAllPrivateChats
-        await bot.set_my_commands(
+        await asyncio.wait_for(bot.set_my_commands(
             [
                 BotCommand(command="start",    description="Open main menu"),
                 BotCommand(command="menu",     description="Main menu"),
@@ -89,23 +95,21 @@ async def _deferred_startup(bot: Bot, dp: Dispatcher):
                 BotCommand(command="admin",    description="Control centre"),
             ],
             scope=BotCommandScopeAllPrivateChats(),
-        )
+        ), timeout=10.0)
         logger.info("STARTUP: Bot commands registered.")
     except Exception as e:
         logger.warning("STARTUP: Failed to register commands: %s", e)
 
-    # 4. Start Scheduler
     try:
-        scheduler = await asyncio.wait_for(setup_scheduler(), timeout=10.0)
+        scheduler = await asyncio.wait_for(setup_scheduler(), timeout=15.0)
         dp["scheduler"] = scheduler
-        await asyncio.wait_for(scheduler.start(), timeout=10.0)
+        await asyncio.wait_for(scheduler.start(), timeout=15.0)
         logger.info("STARTUP: Scheduler is now active.")
     except (Exception, asyncio.TimeoutError) as e:
         logger.warning("STARTUP: Scheduler failed to start: %s", e)
 
-    # 5. Notify Owner
     try:
-        await bot.send_message(settings.bot.owner_id, f"✅ **MedLocum Bot Online**\nVersion: 1.4.4\nStatus: Active")
+        await bot.send_message(settings.bot.owner_id, f"✅ **MedLocum Bot Online**\nVersion: 1.4.5\nStatus: Active")
     except Exception as e:
         logger.warning("STARTUP: Failed to notify owner: %s", e)
 
@@ -130,7 +134,7 @@ async def on_shutdown(bot: Bot, **kwargs):
 
 
 async def health_check(_request: web.Request) -> web.Response:
-    return web.json_response({"status": "ok", "version": "1.4.3"})
+    return web.json_response({"status": "ok", "version": "1.4.5"})
 
 
 async def editor_handler(_request: web.Request) -> web.Response:
