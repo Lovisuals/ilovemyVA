@@ -58,14 +58,14 @@ DRAFT_PREVIEW = (
 DRAFT_SCHED_TYPE = (
     "✏️ New Post — Schedule\n"
     f"{_SEP}\n"
-    "📌 {{subject}}\n"
+    "📌 {subject}\n"
     f"{_SEP}\n"
     "Choose schedule type:"
 )
 DRAFT_TIME_PICK = (
     "✏️ New Post — Time\n"
     f"{_SEP}\n"
-    "📌 {{subject}}\n"
+    "📌 {subject}\n"
     "📅 Recurring schedule\n"
     f"{_SEP}\n"
     "Choose posting time:"
@@ -73,7 +73,7 @@ DRAFT_TIME_PICK = (
 DRAFT_CUSTOM_TIME = (
     "✏️ New Post — Custom Time\n"
     f"{_SEP}\n"
-    "📌 {{subject}}\n"
+    "📌 {subject}\n"
     f"{_SEP}\n"
     "Enter time in HH:MM format (24-hour):\n"
     "Example: 09:30"
@@ -81,7 +81,7 @@ DRAFT_CUSTOM_TIME = (
 DRAFT_CUSTOM_TIME_ERROR = (
     "✏️ New Post — Custom Time\n"
     f"{_SEP}\n"
-    "⚠️ {{error}}\n\n"
+    "⚠️ {error}\n\n"
     "Enter time as HH:MM (e.g. 14:30):"
 )
 DRAFT_DAY_PICK = (
