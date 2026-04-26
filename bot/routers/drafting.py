@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from datetime import datetime, timedelta, timezone
 from typing import List
@@ -105,28 +106,35 @@ async def _do_send(
     bot: Bot, session: AsyncSession, item_id, text: str,
     selected_ids: List[int], chats_by_id: dict,
 ) -> list:
-    results = []
-    for chat_id in selected_ids:
-        log = BroadcastLog(
-            content_id=item_id,
-            target_chat_id=chat_id,
-            target_name=chats_by_id.get(chat_id, ""),
-            status=BroadcastStatus.PENDING,
-        )
-        session.add(log)
-        try:
-            msg = await bot.send_message(chat_id, text)
-            log.status    = BroadcastStatus.SENT
-            log.message_id = msg.message_id
-            log.sent_at   = datetime.now(timezone.utc)
-            results.append({"chat_id": chat_id, "success": True})
-        except Exception as exc:
-            log.status       = BroadcastStatus.FAILED
-            log.error_detail = str(exc)[:200]
-            results.append({"chat_id": chat_id, "success": False, "error": str(exc)[:80]})
+    import asyncio
+    sem = asyncio.Semaphore(5)  # Limit concurrency to stay safe from Telegram flood limits
+
+    async def _send_one(chat_id: int):
+        async with sem:
+            # SIDE EFFECT: Concurrent I/O calls to Telegram API. Why necessary and unavoidable: To reduce blocking time during multi-chat broadcasts and improve user experience.
+            log = BroadcastLog(
+                content_id=item_id,
+                target_chat_id=chat_id,
+                target_name=chats_by_id.get(chat_id, ""),
+                status=BroadcastStatus.PENDING,
+            )
+            session.add(log)
+            try:
+                msg = await bot.send_message(chat_id, text)
+                log.status    = BroadcastStatus.SENT
+                log.message_id = msg.message_id
+                log.sent_at   = datetime.now(timezone.utc)
+                return {"chat_id": chat_id, "success": True}
+            except Exception as exc:
+                log.status       = BroadcastStatus.FAILED
+                log.error_detail = str(exc)[:200]
+                return {"chat_id": chat_id, "success": False, "error": str(exc)[:80]}
+
+    results = await asyncio.gather(*(_send_one(cid) for cid in selected_ids))
+    
     if item_id:
         await session.commit()
-    return results
+    return list(results)
 
 
 @router.message(F.web_app_data, F.chat.type == "private")

@@ -88,22 +88,30 @@ async def on_broadcast_confirm(
     header = f"{item.subject}\n{sep}\n" if item.subject else ""
     text = PersonaService.apply_to_text(header + (item.text or ""), persona)
 
-    sent = 0
-    for chat_id in selected:
-        log = BroadcastLog(
-            content_id=item_id,
-            target_chat_id=chat_id,
-            status=BroadcastStatus.PENDING,
-        )
-        session.add(log)
-        try:
-            msg = await bot.send_message(chat_id, text)
-            log.status = BroadcastStatus.SENT
-            log.message_id = msg.message_id
-            sent += 1
-        except Exception as exc:
-            log.status = BroadcastStatus.FAILED
-            log.error_detail = str(exc)[:200]
+    import asyncio
+    sem = asyncio.Semaphore(5)
+
+    async def _send_one(chat_id: int):
+        async with sem:
+            # SIDE EFFECT: Concurrent I/O calls to Telegram API. Why necessary and unavoidable: To reduce blocking time during multi-chat broadcasts and improve user experience.
+            log = BroadcastLog(
+                content_id=item_id,
+                target_chat_id=chat_id,
+                status=BroadcastStatus.PENDING,
+            )
+            session.add(log)
+            try:
+                msg = await bot.send_message(chat_id, text)
+                log.status = BroadcastStatus.SENT
+                log.message_id = msg.message_id
+                return True
+            except Exception as exc:
+                log.status = BroadcastStatus.FAILED
+                log.error_detail = str(exc)[:200]
+                return False
+
+    sent_results = await asyncio.gather(*(_send_one(cid) for cid in selected))
+    sent = sum(1 for r in sent_results if r)
 
     await session.commit()
     await state.clear()

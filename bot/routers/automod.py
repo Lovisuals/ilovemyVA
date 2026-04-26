@@ -21,19 +21,32 @@ _URL_RE = re.compile(
 
 _admin_cache: dict[tuple[int, int], tuple[bool, float]] = {}
 _CACHE_TTL = 120
+_MAX_CACHE_SIZE = 1000
 
 
 async def _is_admin(bot: Bot, chat_id: int, user_id: int) -> bool:
     now  = time.monotonic()
     key  = (chat_id, user_id)
+    
+    # SIDE EFFECT: Mutates global _admin_cache. Why necessary and unavoidable: To persist admin status across handler calls and reduce API overhead.
     hit  = _admin_cache.get(key)
     if hit and now < hit[1]:
         return hit[0]
+        
     try:
         member = await bot.get_chat_member(chat_id, user_id)
         result = member.status in ("administrator", "creator")
     except Exception:
         result = False
+        
+    if len(_admin_cache) >= _MAX_CACHE_SIZE:
+        # Evict oldest entry (first inserted in Python 3.7+ dicts)
+        try:
+            oldest = next(iter(_admin_cache))
+            del _admin_cache[oldest]
+        except (StopIteration, KeyError):
+            pass
+            
     _admin_cache[key] = (result, now + _CACHE_TTL)
     return result
 

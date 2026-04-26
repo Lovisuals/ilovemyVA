@@ -8,12 +8,31 @@ from bot.models.persona import BotPersona
 
 
 class PersonaService:
+    _active_cache: Optional[BotPersona] = None
+    _cache_time: float = 0
+    _CACHE_TTL = 60
+
     @staticmethod
     async def get_active(session: AsyncSession) -> Optional[BotPersona]:
+        import time
+        now = time.monotonic()
+        if PersonaService._active_cache and (now - PersonaService._cache_time) < PersonaService._CACHE_TTL:
+            return PersonaService._active_cache
+
         result = await session.execute(
             select(BotPersona).where(BotPersona.is_active == True)
         )
-        return result.scalar_one_or_none()
+        persona = result.scalar_one_or_none()
+        
+        # SIDE EFFECT: Mutates static cache _active_cache. Why necessary and unavoidable: To reduce DB load by caching the frequently accessed active persona.
+        PersonaService._active_cache = persona
+        PersonaService._cache_time = now
+        return persona
+
+    @staticmethod
+    def invalidate_cache():
+        PersonaService._active_cache = None
+        PersonaService._cache_time = 0
 
     @staticmethod
     async def list_all(session: AsyncSession) -> List[BotPersona]:
@@ -44,6 +63,7 @@ class PersonaService:
         session.add(persona)
         await session.commit()
         await session.refresh(persona)
+        PersonaService.invalidate_cache()
         return persona
 
     @staticmethod
@@ -53,6 +73,7 @@ class PersonaService:
             update(BotPersona).where(BotPersona.id == persona_id).values(is_active=True)
         )
         await session.commit()
+        PersonaService.invalidate_cache()
 
     @staticmethod
     async def delete(session: AsyncSession, persona_id: uuid.UUID) -> None:
@@ -60,6 +81,7 @@ class PersonaService:
         if persona:
             await session.delete(persona)
             await session.commit()
+            PersonaService.invalidate_cache()
 
     @staticmethod
     def render_signature(persona: BotPersona) -> str:
