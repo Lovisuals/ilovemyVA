@@ -115,7 +115,10 @@ async def target_toggle(query: CallbackQuery, callback_data: TargetToggle, state
     else:               selected.append(cid)
     await state.update_data(selected_ids=selected)
     chats = await _get_chats(session)
-    await query.message.edit_reply_markup(reply_markup=build_target_kb(chats, selected, confirm_label="✅ Schedule"))
+    try:
+        await query.message.edit_reply_markup(reply_markup=build_target_kb(chats, selected, confirm_label="✅ Schedule"))
+    except Exception:
+        pass
     await query.answer()
 
 @router.callback_query(SchedulePicking.SELECTING_TARGETS, TargetToggle.filter(F.action.in_({"all", "none"})))
@@ -123,7 +126,10 @@ async def target_all_none(query: CallbackQuery, callback_data: TargetToggle, sta
     chats = await _get_chats(session)
     selected = [c.chat_id for c in chats] if callback_data.action == "all" else []
     await state.update_data(selected_ids=selected)
-    await query.message.edit_reply_markup(reply_markup=build_target_kb(chats, selected, confirm_label="✅ Schedule"))
+    try:
+        await query.message.edit_reply_markup(reply_markup=build_target_kb(chats, selected, confirm_label="✅ Schedule"))
+    except Exception:
+        pass
     await query.answer()
 
 @router.callback_query(SchedulePicking.SELECTING_TARGETS, TargetToggle.filter(F.action == "confirm"))

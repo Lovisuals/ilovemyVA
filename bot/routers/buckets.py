@@ -37,7 +37,10 @@ async def on_item_action(
             text = ITEM_VIEW.format(text=item.text or "No text", bucket=item.bucket.value)
             if item.subject:
                 text = f"📌 {item.subject}\n\n" + text
-            await query.message.edit_text(text, reply_markup=kb)
+            try:
+                await query.message.edit_text(text, reply_markup=kb)
+            except Exception:
+                pass
         await query.answer()
 
     elif action == "delete":
@@ -47,14 +50,20 @@ async def on_item_action(
         await ContentService.delete_item(session, item_id)
         await query.answer("Item deleted.")
         kb = build_bucket_list()
-        await query.message.edit_text("📂 Content Library\n\nSelect a bucket:", reply_markup=kb)
+        try:
+            await query.message.edit_text("📂 Content Library\n\nSelect a bucket:", reply_markup=kb)
+        except Exception:
+            pass
 
     elif action == "back":
         item = await ContentService.get_by_id(session, item_id)
         bucket = item.bucket if item else ContentBucket.DRAFTS
         items, total = await ContentService.get_page(session, bucket, 1, 10)
         kb = build_content_list(items, bucket, 1, max(1, (total + 9) // 10))
-        await query.message.edit_text(BUCKET_TITLE.format(bucket=bucket.value), reply_markup=kb)
+        try:
+            await query.message.edit_text(BUCKET_TITLE.format(bucket=bucket.value), reply_markup=kb)
+        except Exception:
+            pass
         await query.answer()
 
     else:
