@@ -20,7 +20,6 @@ from bot.strings import (
 
 router = Router()
 
-
 @router.callback_query(NavData.filter(F.section == "persona"))
 async def nav_persona(query: CallbackQuery, bot_user: BotUser, session: AsyncSession):
     if bot_user.role not in (UserRole.ADMIN, UserRole.SUPERADMIN):
@@ -33,7 +32,6 @@ async def nav_persona(query: CallbackQuery, bot_user: BotUser, session: AsyncSes
         pass
     await query.answer()
 
-
 @router.callback_query(NavData.filter(F.section == "persona_new"))
 async def persona_new_start(query: CallbackQuery, bot_user: BotUser, state: FSMContext):
     if bot_user.role not in (UserRole.ADMIN, UserRole.SUPERADMIN):
@@ -44,7 +42,6 @@ async def persona_new_start(query: CallbackQuery, bot_user: BotUser, state: FSMC
     builder.button(text="← Cancel", callback_data=NavData(section="persona").pack())
     await query.message.edit_text(PERSONA_ENTER_NAME, reply_markup=builder.as_markup())
     await query.answer()
-
 
 @router.message(PersonaCreation.ENTERING_NAME)
 async def persona_name_received(
@@ -70,7 +67,6 @@ async def persona_name_received(
         reply_markup=build_persona_list(personas),
     )
 
-
 @router.callback_query(PersonaAction.filter(F.action == "view"))
 async def persona_view(
     query: CallbackQuery, callback_data: PersonaAction, session: AsyncSession
@@ -91,7 +87,6 @@ async def persona_view(
     )
     await query.answer()
 
-
 @router.callback_query(PersonaAction.filter(F.action == "activate"))
 async def persona_activate(
     query: CallbackQuery, callback_data: PersonaAction, session: AsyncSession
@@ -100,7 +95,6 @@ async def persona_activate(
     personas = await PersonaService.list_all(session)
     await query.message.edit_text(PERSONA_ACTIVATED, reply_markup=build_persona_list(personas))
     await query.answer()
-
 
 @router.callback_query(PersonaAction.filter(F.action == "delete"))
 async def persona_delete(

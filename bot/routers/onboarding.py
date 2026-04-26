@@ -23,10 +23,9 @@ from bot.strings import (
 
 router = Router()
 
-
 @router.message(CommandStart())
 async def cmd_start(message: Message, bot_user: BotUser, is_new_user: bool = False):
-    # #region agent log
+    
     write_debug_log(
         run_id="pre-fix",
         hypothesis_id="H5",
@@ -34,7 +33,7 @@ async def cmd_start(message: Message, bot_user: BotUser, is_new_user: bool = Fal
         message="Start command handler invoked",
         data={"user_id": bot_user.id, "role": str(bot_user.role), "is_new_user": is_new_user},
     )
-    # #endregion
+    
     if bot_user.role == UserRole.SUPERADMIN:
         await message.answer(WELCOME_SUPERADMIN)
         await message.answer(MENU_ADMIN, reply_markup=build_main_menu(bot_user.role))
@@ -68,7 +67,6 @@ async def cmd_start(message: Message, bot_user: BotUser, is_new_user: bool = Fal
             except Exception:
                 pass
 
-
 @router.message(F.text.regexp(r"^[A-Z0-9]{4}-[A-Z0-9]{4}$"))
 async def on_code_received(message: Message, bot_user: BotUser, session: AsyncSession):
     if bot_user.role != UserRole.PENDING:
@@ -88,7 +86,6 @@ async def on_code_received(message: Message, bot_user: BotUser, session: AsyncSe
     await session.commit()
     await message.answer(CODE_ACCEPTED)
     await message.answer(MENU_USER, reply_markup=build_main_menu(UserRole.USER))
-
 
 @router.callback_query(OnboardGen.filter())
 async def on_onboard_gen(

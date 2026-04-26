@@ -6,7 +6,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from database.base import Base
 
-
 class FaqEntry(Base):
     __tablename__ = "faq_entries"
 

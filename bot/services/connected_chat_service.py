@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.models.connected_chat import ConnectedChat
 
-
 class ConnectedChatService:
 
     @staticmethod
@@ -78,10 +77,14 @@ class ConnectedChatService:
         return chat.is_broadcast_target
 
     @staticmethod
-    async def touch(session: AsyncSession, chat_id: int) -> None:
+    async def touch(session: AsyncSession, chat_id: int, thread_id: Optional[int] = None) -> None:
+        values = {"last_active_at": datetime.now(timezone.utc)}
+        if thread_id:
+            values["message_thread_id"] = thread_id
+            
         await session.execute(
             update(ConnectedChat)
             .where(ConnectedChat.chat_id == chat_id)
-            .values(last_active_at=datetime.now(timezone.utc))
+            .values(**values)
         )
         await session.commit()

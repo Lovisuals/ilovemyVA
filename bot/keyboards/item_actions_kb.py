@@ -5,13 +5,11 @@ from bot.callbacks import ContentItemAction
 from bot.keyboards.menu_kb import MENU_BTN
 from bot.models.content_item import ContentBucket
 
-
 def _btn(label: str, item_id: str, action: str) -> InlineKeyboardButton:
     return InlineKeyboardButton(
         text=label,
         callback_data=ContentItemAction(item_id=item_id, action=action).pack(),
     )
-
 
 def build_item_actions(item_id: str, bucket: ContentBucket) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()

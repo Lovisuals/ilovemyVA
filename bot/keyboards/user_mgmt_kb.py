@@ -15,7 +15,6 @@ _ROLE_ICON = {
     UserRole.PENDING: "🕒",
 }
 
-
 def build_user_list(users: List[BotUser], page: int, total_pages: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for user in users:
@@ -32,7 +31,6 @@ def build_user_list(users: List[BotUser], page: int, total_pages: int) -> Inline
         builder.row(*paginator)
     builder.row(MENU_BTN)
     return builder.as_markup()
-
 
 def build_user_actions(user_id: int, current_role: UserRole) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()

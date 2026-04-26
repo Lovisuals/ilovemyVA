@@ -14,13 +14,11 @@ from bot.strings import BUCKET_TITLE, ITEM_VIEW
 
 router = Router()
 
-
 @router.message(Command("content"))
 async def cmd_content(message: Message, bot_user: BotUser):
     if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
         return
     await message.answer("📂 Content Library\n\nSelect a bucket:", reply_markup=build_bucket_list())
-
 
 @router.callback_query(ContentItemAction.filter())
 async def on_item_action(

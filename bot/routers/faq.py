@@ -19,7 +19,6 @@ from bot.strings import (
 
 router = Router()
 
-
 @router.callback_query(NavData.filter(F.section == "faq"))
 async def nav_faq(query: CallbackQuery, bot_user: BotUser, session: AsyncSession):
     if bot_user.role not in (UserRole.ADMIN, UserRole.SUPERADMIN):
@@ -32,7 +31,6 @@ async def nav_faq(query: CallbackQuery, bot_user: BotUser, session: AsyncSession
         pass
     await query.answer()
 
-
 @router.callback_query(NavData.filter(F.section == "faq_new"))
 async def faq_new_start(query: CallbackQuery, bot_user: BotUser, state: FSMContext):
     if bot_user.role not in (UserRole.ADMIN, UserRole.SUPERADMIN):
@@ -44,7 +42,6 @@ async def faq_new_start(query: CallbackQuery, bot_user: BotUser, state: FSMConte
     await query.message.edit_text(FAQ_ENTER_TRIGGER, reply_markup=builder.as_markup())
     await query.answer()
 
-
 @router.message(FaqCreation.ENTERING_TRIGGER)
 async def faq_trigger_received(message: Message, state: FSMContext):
     await state.update_data(faq_trigger=message.text.strip())
@@ -52,7 +49,6 @@ async def faq_trigger_received(message: Message, state: FSMContext):
     builder = InlineKeyboardBuilder()
     builder.button(text="← Cancel", callback_data=NavData(section="faq").pack())
     await message.answer(FAQ_ENTER_RESPONSE, reply_markup=builder.as_markup())
-
 
 @router.message(FaqCreation.ENTERING_RESPONSE)
 async def faq_response_received(
@@ -64,7 +60,6 @@ async def faq_response_received(
     await state.clear()
     entries = await FaqService.list_all(session)
     await message.answer(FAQ_CREATED.format(trigger=trigger), reply_markup=build_faq_list(entries))
-
 
 @router.callback_query(FaqAction.filter(F.action == "view"))
 async def faq_view(
@@ -85,7 +80,6 @@ async def faq_view(
     )
     await query.answer()
 
-
 @router.callback_query(FaqAction.filter(F.action == "toggle"))
 async def faq_toggle(
     query: CallbackQuery, callback_data: FaqAction, session: AsyncSession
@@ -95,7 +89,6 @@ async def faq_toggle(
     await query.message.edit_text(FAQ_LIST_HEADER, reply_markup=build_faq_list(entries))
     await query.answer()
 
-
 @router.callback_query(FaqAction.filter(F.action == "delete"))
 async def faq_delete(
     query: CallbackQuery, callback_data: FaqAction, session: AsyncSession
@@ -104,7 +97,6 @@ async def faq_delete(
     entries = await FaqService.list_all(session)
     await query.message.edit_text(FAQ_DELETED, reply_markup=build_faq_list(entries))
     await query.answer()
-
 
 @router.message(F.text, F.chat.type.in_({"group", "supergroup"}))
 async def auto_reply(message: Message, session: AsyncSession):

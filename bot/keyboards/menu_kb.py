@@ -9,7 +9,6 @@ MENU_BTN = InlineKeyboardButton(
     callback_data=NavData(section="menu").pack(),
 )
 
-
 def build_main_menu(role: UserRole) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if role in (UserRole.ADMIN, UserRole.SUPERADMIN):
@@ -27,7 +26,6 @@ def build_main_menu(role: UserRole) -> InlineKeyboardMarkup:
         builder.button(text="❓ Help & Commands", callback_data=NavData(section="help").pack())
         builder.adjust(1)
     return builder.as_markup()
-
 
 def build_menu_row() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()

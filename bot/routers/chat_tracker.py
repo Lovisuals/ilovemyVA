@@ -12,7 +12,6 @@ router = Router()
 _ACTIVE_STATUSES = {"member", "administrator"}
 _GONE_STATUSES   = {"left", "kicked", "restricted"}
 
-
 @router.my_chat_member()
 async def on_bot_membership(event: ChatMemberUpdated, session: AsyncSession) -> None:
     status = event.new_chat_member.status
@@ -38,11 +37,10 @@ async def on_bot_membership(event: ChatMemberUpdated, session: AsyncSession) -> 
     except Exception as exc:
         logger.warning("chat_tracker error for %s: %s", chat.id, exc)
 
-
 @router.channel_post(F.text)
 @router.message(F.text, F.chat.type.in_({"group", "supergroup"}))
 async def on_chat_activity(message: Message, session: AsyncSession) -> None:
     try:
-        await ConnectedChatService.touch(session, message.chat.id)
+        await ConnectedChatService.touch(session, message.chat.id, message.message_thread_id)
     except Exception:
         pass

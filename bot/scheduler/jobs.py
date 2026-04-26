@@ -11,7 +11,6 @@ from bot.models.content_item import ContentBucket, ContentItem
 
 logger = logging.getLogger(__name__)
 
-
 async def publish_content_job(item_id: str) -> None:
     bot = Bot(token=settings.bot.token)
     try:
@@ -45,8 +44,14 @@ async def publish_content_job(item_id: str) -> None:
             except Exception as exc:
                 logger.warning("publish_content_job: persona fetch failed: %s", exc)
 
+            from bot.models.connected_chat import ConnectedChat
+            
             sent = 0
             for chat_id in target_ids:
+                
+                chat_info = await session.get(ConnectedChat, chat_id)
+                thread_id = chat_info.message_thread_id if chat_info else None
+
                 log = BroadcastLog(
                     content_id=item.id,
                     target_chat_id=chat_id,
@@ -54,7 +59,11 @@ async def publish_content_job(item_id: str) -> None:
                 )
                 session.add(log)
                 try:
-                    msg = await bot.send_message(chat_id, text)
+                    
+                    msg = await bot.send_message(
+                        chat_id, text, 
+                        message_thread_id=thread_id
+                    )
                     log.status = BroadcastStatus.SENT
                     log.message_id = msg.message_id
                     log.sent_at = datetime.now(timezone.utc)
@@ -62,7 +71,7 @@ async def publish_content_job(item_id: str) -> None:
                 except Exception as exc:
                     log.status = BroadcastStatus.FAILED
                     log.error_detail = str(exc)[:200]
-                    logger.warning("publish_content_job: failed to send to %s: %s", chat_id, exc)
+                    logger.warning("publish_content_job: failed to send to %s (thread %s): %s", chat_id, thread_id, exc)
 
             item.bucket = ContentBucket.PUBLISHED
             item.published_at = datetime.now(timezone.utc)

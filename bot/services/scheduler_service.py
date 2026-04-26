@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.models.content_item import ContentItem, ContentBucket
 
-
 class SchedulerService:
     @staticmethod
     async def register_job(
@@ -37,7 +36,7 @@ class SchedulerService:
                 trigger = CronTrigger(hour=h, minute=m, timezone=tz_str)
             elif recurrence == "weekly":
                 trigger = CronTrigger(day_of_week=now.weekday(), hour=h, minute=m, timezone=tz_str)
-            else: # once
+            else: 
                 run_at = tz.localize(datetime(now.year, now.month, now.day, h, m))
                 if run_at < now:
                     run_at += timedelta(days=1)
@@ -58,7 +57,7 @@ class SchedulerService:
         item = result.scalar_one_or_none()
         if item:
             item.scheduler_job_id = combined_job_ids
-            # Keep scheduled_at for UI purposes, using the first time
+            
             if recurrence == "once":
                 h, m = map(int, times[0].split(":"))
                 run_at = tz.localize(datetime(now.year, now.month, now.day, h, m))

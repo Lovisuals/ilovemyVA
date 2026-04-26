@@ -1,6 +1,5 @@
 from aiogram.fsm.state import State, StatesGroup
 
-
 class DraftCreation(StatesGroup):
     WAITING_SUBJECT = State()
     WAITING_BODY = State()
@@ -12,7 +11,6 @@ class DraftCreation(StatesGroup):
     CHOOSING_DAYS = State()
     ENTERING_DATETIME = State()
     SELECTING_TARGETS = State()
-
 
 class DraftEditing(StatesGroup):
     SELECTING_FIELD = State()

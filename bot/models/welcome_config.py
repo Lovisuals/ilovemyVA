@@ -6,7 +6,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from database.base import Base
 
-
 class WelcomeConfig(Base):
     __tablename__ = "welcome_configs"
 

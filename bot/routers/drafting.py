@@ -53,13 +53,11 @@ _TIME_LABELS = {
     "1200": "12:00",    "1500": "15:00", "1800": "18:00", "2100": "21:00",
 }
 
-
 def _days_text(days: List[str]) -> str:
     if sorted(days) == sorted(_ALL_DAYS):   return "every day"
     if sorted(days) == sorted(_WEEKDAYS):   return "weekdays"
     if sorted(days) == sorted(_WEEKENDS):   return "weekends"
     return ", ".join(_DAY_LABELS.get(d, d) for d in days)
-
 
 async def _edit(bot: Bot, chat_id: int, msg_id: int, text: str, markup) -> None:
     try:
@@ -69,13 +67,11 @@ async def _edit(bot: Bot, chat_id: int, msg_id: int, text: str, markup) -> None:
     except Exception:
         pass
 
-
 async def _safe_delete(msg: Message) -> None:
     try:
         await msg.delete()
     except TelegramBadRequest:
         pass
-
 
 async def _get_chats(session: AsyncSession) -> list:
     chats = await ConnectedChatService.list_active(session)
@@ -87,7 +83,6 @@ async def _get_chats(session: AsyncSession) -> list:
         dummy.chat_type = "channel"
         return [dummy]
     return chats
-
 
 def _build_report(results: list, chats_by_id: dict) -> str:
     rows = []
@@ -101,17 +96,20 @@ def _build_report(results: list, chats_by_id: dict) -> str:
     failed = len(results) - sent
     return DRAFT_REPORT_HEADER + "\n".join(rows) + DRAFT_REPORT_FOOTER.format(sent=sent, failed=failed)
 
-
 async def _do_send(
     bot: Bot, session: AsyncSession, item_id, text: str,
     selected_ids: List[int], chats_by_id: dict,
 ) -> list:
     import asyncio
-    sem = asyncio.Semaphore(5)  # Limit concurrency to stay safe from Telegram flood limits
+    sem = asyncio.Semaphore(5)  
 
     async def _send_one(chat_id: int):
         async with sem:
-            # SIDE EFFECT: Concurrent I/O calls to Telegram API. Why necessary and unavoidable: To reduce blocking time during multi-chat broadcasts and improve user experience.
+
+            from bot.models.connected_chat import ConnectedChat
+            chat_info = await session.get(ConnectedChat, chat_id)
+            thread_id = chat_info.message_thread_id if chat_info else None
+
             log = BroadcastLog(
                 content_id=item_id,
                 target_chat_id=chat_id,
@@ -120,7 +118,10 @@ async def _do_send(
             )
             session.add(log)
             try:
-                msg = await bot.send_message(chat_id, text)
+                msg = await bot.send_message(
+                    chat_id, text,
+                    message_thread_id=thread_id
+                )
                 log.status    = BroadcastStatus.SENT
                 log.message_id = msg.message_id
                 log.sent_at   = datetime.now(timezone.utc)
@@ -135,7 +136,6 @@ async def _do_send(
     if item_id:
         await session.commit()
     return list(results)
-
 
 @router.message(F.web_app_data, F.chat.type == "private")
 async def on_editor_data(message: Message, state: FSMContext, bot: Bot):
@@ -167,7 +167,6 @@ async def on_editor_data(message: Message, state: FSMContext, bot: Bot):
         build_action_kb(),
     )
 
-
 @router.message(Command("new"))
 async def cmd_new(message: Message, bot_user: BotUser, state: FSMContext):
     if bot_user.role not in (UserRole.ADMIN, UserRole.SUPERADMIN):
@@ -175,7 +174,6 @@ async def cmd_new(message: Message, bot_user: BotUser, state: FSMContext):
     sent = await message.answer(DRAFT_STEP1, reply_markup=build_step1_kb())
     await state.set_state(DraftCreation.WAITING_SUBJECT)
     await state.update_data(draft_msg_id=sent.message_id, draft_chat_id=message.chat.id)
-
 
 @router.callback_query(NavData.filter(F.section == "new"))
 async def nav_new(query: CallbackQuery, bot_user: BotUser, state: FSMContext, bot: Bot):
@@ -190,7 +188,6 @@ async def nav_new(query: CallbackQuery, bot_user: BotUser, state: FSMContext, bo
     )
     await query.answer()
 
-
 @router.callback_query(PostAction.filter(F.action == "type_mode"))
 async def switch_to_type_mode(query: CallbackQuery, state: FSMContext, bot: Bot):
     data = await state.get_data()
@@ -198,7 +195,6 @@ async def switch_to_type_mode(query: CallbackQuery, state: FSMContext, bot: Bot)
     await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
                 DRAFT_STEP1, build_step2_kb())
     await query.answer()
-
 
 @router.message(DraftCreation.WAITING_SUBJECT, F.text, F.chat.type == "private")
 async def on_subject(message: Message, state: FSMContext, bot: Bot):
@@ -217,7 +213,6 @@ async def on_subject(message: Message, state: FSMContext, bot: Bot):
     await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
                 DRAFT_STEP2.format(subject=subject), build_step2_kb())
 
-
 @router.message(DraftCreation.WAITING_BODY, F.text, F.chat.type == "private")
 async def on_body(message: Message, state: FSMContext, bot: Bot):
     body = (message.text or "").strip()
@@ -232,7 +227,6 @@ async def on_body(message: Message, state: FSMContext, bot: Bot):
     await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
                 DRAFT_PREVIEW.format(subject=subject, body=preview_body), build_action_kb())
 
-
 @router.callback_query(PostAction.filter(F.action == "edit_subj"),
                        DraftCreation.WAITING_BODY)
 @router.callback_query(PostAction.filter(F.action == "edit_subj"),
@@ -246,7 +240,6 @@ async def edit_subject(query: CallbackQuery, state: FSMContext, bot: Bot):
                 DRAFT_STEP1 + hint, build_step1_kb())
     await query.answer()
 
-
 @router.callback_query(PostAction.filter(F.action == "edit_body"),
                        DraftCreation.CHOOSING_ACTION)
 async def edit_body(query: CallbackQuery, state: FSMContext, bot: Bot):
@@ -258,14 +251,12 @@ async def edit_body(query: CallbackQuery, state: FSMContext, bot: Bot):
                 build_step2_kb())
     await query.answer()
 
-
 @router.callback_query(PostAction.filter(F.action == "cancel"))
 async def post_cancel(query: CallbackQuery, state: FSMContext, bot_user: BotUser, bot: Bot):
     await state.clear()
     await _edit(bot, query.message.chat.id, query.message.message_id,
                 MENU_ADMIN, build_main_menu(bot_user.role))
     await query.answer()
-
 
 @router.callback_query(PostAction.filter(F.action == "draft"), DraftCreation.CHOOSING_ACTION)
 async def post_save_draft(
@@ -284,7 +275,6 @@ async def post_save_draft(
     await _edit(bot, data["draft_chat_id"], data["draft_msg_id"], DRAFT_SAVED, build_menu_row())
     await query.answer("Draft saved.")
 
-
 @router.callback_query(PostAction.filter(F.action == "now"), DraftCreation.CHOOSING_ACTION)
 async def post_now(query: CallbackQuery, state: FSMContext, session: AsyncSession, bot: Bot):
     data  = await state.get_data()
@@ -298,7 +288,6 @@ async def post_now(query: CallbackQuery, state: FSMContext, session: AsyncSessio
                 build_target_kb(chats, all_ids, confirm_label="🚀 Send Now"))
     await query.answer()
 
-
 @router.callback_query(PostAction.filter(F.action == "sched"), DraftCreation.CHOOSING_ACTION)
 async def post_sched(query: CallbackQuery, state: FSMContext, bot: Bot):
     data = await state.get_data()
@@ -306,7 +295,6 @@ async def post_sched(query: CallbackQuery, state: FSMContext, bot: Bot):
     await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
                 DRAFT_SCHED_TYPE.format(subject=data.get("subject", "")), build_sched_type_kb())
     await query.answer()
-
 
 @router.callback_query(SchedType.filter(F.sched_type == "back"), DraftCreation.CHOOSING_SCHED_TYPE)
 async def sched_type_back(query: CallbackQuery, state: FSMContext, bot: Bot):
@@ -319,7 +307,6 @@ async def sched_type_back(query: CallbackQuery, state: FSMContext, bot: Bot):
                 DRAFT_PREVIEW.format(subject=subject, body=preview_body), build_action_kb())
     await query.answer()
 
-
 @router.callback_query(SchedType.filter(F.sched_type == "recurring"), DraftCreation.CHOOSING_SCHED_TYPE)
 async def sched_recurring(query: CallbackQuery, state: FSMContext, bot: Bot):
     data = await state.get_data()
@@ -328,7 +315,6 @@ async def sched_recurring(query: CallbackQuery, state: FSMContext, bot: Bot):
     await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
                 DRAFT_TIME_PICK.format(subject=data.get("subject", "")), build_time_kb())
     await query.answer()
-
 
 @router.callback_query(SchedType.filter(F.sched_type == "one_time"), DraftCreation.CHOOSING_SCHED_TYPE)
 async def sched_one_time(query: CallbackQuery, state: FSMContext, bot: Bot):
@@ -339,7 +325,6 @@ async def sched_one_time(query: CallbackQuery, state: FSMContext, bot: Bot):
                 DRAFT_DATETIME_PICK.format(subject=data.get("subject", "")), build_datetime_kb())
     await query.answer()
 
-
 @router.callback_query(SchedType.filter(F.sched_type == "back"), DraftCreation.ENTERING_DATETIME)
 async def datetime_back(query: CallbackQuery, state: FSMContext, bot: Bot):
     data = await state.get_data()
@@ -347,7 +332,6 @@ async def datetime_back(query: CallbackQuery, state: FSMContext, bot: Bot):
     await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
                 DRAFT_SCHED_TYPE.format(subject=data.get("subject", "")), build_sched_type_kb())
     await query.answer()
-
 
 @router.message(DraftCreation.ENTERING_DATETIME, F.text, F.chat.type == "private")
 async def on_datetime(message: Message, state: FSMContext, bot: Bot, session: AsyncSession):
@@ -375,7 +359,6 @@ async def on_datetime(message: Message, state: FSMContext, bot: Bot, session: As
                                      schedule_line=f"📅 One-time: {text}"),
                 build_target_kb(chats, all_ids, confirm_label="✅ Schedule"))
 
-
 @router.callback_query(TimeSlot.filter(F.slot == "back"), DraftCreation.CHOOSING_TIME)
 async def time_back(query: CallbackQuery, state: FSMContext, bot: Bot):
     data = await state.get_data()
@@ -384,7 +367,6 @@ async def time_back(query: CallbackQuery, state: FSMContext, bot: Bot):
                 DRAFT_SCHED_TYPE.format(subject=data.get("subject", "")), build_sched_type_kb())
     await query.answer()
 
-
 @router.callback_query(TimeSlot.filter(F.slot == "custom"), DraftCreation.CHOOSING_TIME)
 async def time_custom(query: CallbackQuery, state: FSMContext, bot: Bot):
     data = await state.get_data()
@@ -392,7 +374,6 @@ async def time_custom(query: CallbackQuery, state: FSMContext, bot: Bot):
     await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
                 DRAFT_CUSTOM_TIME.format(subject=data.get("subject", "")), build_custom_time_kb())
     await query.answer()
-
 
 @router.callback_query(TimeSlot.filter(), DraftCreation.CHOOSING_TIME)
 async def time_selected(query: CallbackQuery, callback_data: TimeSlot, state: FSMContext, bot: Bot):
@@ -417,7 +398,6 @@ async def time_selected(query: CallbackQuery, callback_data: TimeSlot, state: FS
                 DRAFT_DAY_PICK.format(subject=data.get("subject", ""), time_text=human),
                 build_day_kb(list(_ALL_DAYS)))
     await query.answer()
-
 
 @router.callback_query(MultiTimeToggle.filter(), DraftCreation.CHOOSING_MULTIPLE_TIMES)
 async def multi_time_toggle(query: CallbackQuery, callback_data: MultiTimeToggle, state: FSMContext, bot: Bot):
@@ -480,7 +460,6 @@ async def multi_time_toggle(query: CallbackQuery, callback_data: MultiTimeToggle
         logger.exception("Error in multi_time_toggle: %s", exc)
         await query.answer(f"⚠️ Error: {str(exc)[:100]}", show_alert=True)
 
-
 @router.callback_query(TimeSlot.filter(F.slot == "back"), DraftCreation.ENTERING_CUSTOM_TIME)
 async def custom_time_back(query: CallbackQuery, state: FSMContext, bot: Bot):
     data = await state.get_data()
@@ -488,7 +467,6 @@ async def custom_time_back(query: CallbackQuery, state: FSMContext, bot: Bot):
     await _edit(bot, query.message.chat.id, query.message.message_id,
                 DRAFT_TIME_PICK.format(subject=data.get("subject", "")), build_time_kb())
     await query.answer()
-
 
 @router.message(DraftCreation.ENTERING_CUSTOM_TIME, F.text, F.chat.type == "private")
 async def on_custom_time(message: Message, state: FSMContext, bot: Bot):
@@ -513,7 +491,6 @@ async def on_custom_time(message: Message, state: FSMContext, bot: Bot):
                 DRAFT_DAY_PICK.format(subject=data.get("subject", ""), time_text=sched_time),
                 build_day_kb(list(_ALL_DAYS)))
 
-
 @router.callback_query(DayToggle.filter(F.day == "back"), DraftCreation.CHOOSING_DAYS)
 async def days_back(query: CallbackQuery, state: FSMContext, bot: Bot):
     data = await state.get_data()
@@ -521,7 +498,6 @@ async def days_back(query: CallbackQuery, state: FSMContext, bot: Bot):
     await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
                 DRAFT_TIME_PICK.format(subject=data.get("subject", "")), build_time_kb())
     await query.answer()
-
 
 @router.callback_query(DayToggle.filter(F.day == "confirm"), DraftCreation.CHOOSING_DAYS)
 async def days_confirm(query: CallbackQuery, state: FSMContext, session: AsyncSession, bot: Bot):
@@ -541,7 +517,6 @@ async def days_confirm(query: CallbackQuery, state: FSMContext, session: AsyncSe
                                      schedule_line=f"🔄 Every {days_label} at {time_text}"),
                 build_target_kb(chats, all_ids, confirm_label="✅ Schedule"))
     await query.answer()
-
 
 @router.callback_query(DayToggle.filter(), DraftCreation.CHOOSING_DAYS)
 async def day_toggle(query: CallbackQuery, callback_data: DayToggle, state: FSMContext):
@@ -568,7 +543,6 @@ async def day_toggle(query: CallbackQuery, callback_data: DayToggle, state: FSMC
         pass
     await query.answer()
 
-
 @router.callback_query(TargetToggle.filter(F.action == "back"), DraftCreation.SELECTING_TARGETS)
 async def targets_back(query: CallbackQuery, state: FSMContext, bot: Bot):
     data    = await state.get_data()
@@ -593,7 +567,6 @@ async def targets_back(query: CallbackQuery, state: FSMContext, bot: Bot):
                     DRAFT_PREVIEW.format(subject=subject, body=preview_body), build_action_kb())
     await query.answer()
 
-
 @router.callback_query(TargetToggle.filter(F.action == "chat"), DraftCreation.SELECTING_TARGETS)
 async def target_toggle(
     query: CallbackQuery, callback_data: TargetToggle, state: FSMContext, session: AsyncSession
@@ -614,7 +587,6 @@ async def target_toggle(
         pass
     await query.answer()
 
-
 @router.callback_query(
     TargetToggle.filter(F.action.in_({"all", "none"})), DraftCreation.SELECTING_TARGETS
 )
@@ -633,7 +605,6 @@ async def target_all_none(
     except TelegramBadRequest:
         pass
     await query.answer()
-
 
 @router.callback_query(TargetToggle.filter(F.action == "confirm"), DraftCreation.SELECTING_TARGETS)
 async def targets_confirm(
@@ -730,7 +701,6 @@ async def targets_confirm(
                     ), build_menu_row())
         await query.answer("Scheduled!")
 
-
 @router.callback_query(RetryBroadcast.filter())
 async def retry_broadcast(
     query: CallbackQuery, state: FSMContext, session: AsyncSession, bot: Bot
@@ -766,7 +736,7 @@ from urllib.parse import parse_qsl
 
 def verify_init_data(token: str, init_data: str):
     try:
-        # #region agent log
+        
         write_debug_log(
             run_id="pre-fix",
             hypothesis_id="H10",
@@ -774,10 +744,10 @@ def verify_init_data(token: str, init_data: str):
             message="Verifying Telegram initData",
             data={"has_init_data": bool(init_data), "init_data_len": len(init_data or "")},
         )
-        # #endregion
+        
         parsed_data = dict(parse_qsl(init_data or ""))
         if "hash" not in parsed_data:
-            # #region agent log
+            
             write_debug_log(
                 run_id="pre-fix",
                 hypothesis_id="H10",
@@ -785,7 +755,7 @@ def verify_init_data(token: str, init_data: str):
                 message="initData missing hash",
                 data={},
             )
-            # #endregion
+            
             return None
         hash_val = parsed_data.pop("hash")
         data_check_string = "\n".join(
@@ -796,7 +766,7 @@ def verify_init_data(token: str, init_data: str):
             secret_key, data_check_string.encode(), hashlib.sha256
         ).hexdigest()
         if calculated_hash != hash_val:
-            # #region agent log
+            
             write_debug_log(
                 run_id="pre-fix",
                 hypothesis_id="H10",
@@ -804,12 +774,12 @@ def verify_init_data(token: str, init_data: str):
                 message="initData hash mismatch",
                 data={"calculated_prefix": calculated_hash[:12], "received_prefix": hash_val[:12]},
             )
-            # #endregion
+            
             return None
         if "user" in parsed_data:
             return json.loads(parsed_data["user"])
     except Exception as e:
-        # #region agent log
+        
         write_debug_log(
             run_id="pre-fix",
             hypothesis_id="H10",
@@ -817,7 +787,7 @@ def verify_init_data(token: str, init_data: str):
             message="Exception while verifying initData",
             data={"error": str(e)},
         )
-        # #endregion
+        
         pass
     return None
 
@@ -831,7 +801,7 @@ async def api_draft_handler(request: web.Request) -> web.Response:
         
     init_data = data.get("initData")
     payload = data.get("payload", {})
-    # #region agent log
+    
     write_debug_log(
         run_id="pre-fix",
         hypothesis_id="H11",
@@ -843,11 +813,10 @@ async def api_draft_handler(request: web.Request) -> web.Response:
             "body_len": len((payload.get("body") or "").strip()),
         },
     )
-    # #endregion
-    
+
     user = verify_init_data(settings.bot.token, init_data)
     if not user:
-        # #region agent log
+        
         write_debug_log(
             run_id="pre-fix",
             hypothesis_id="H11",
@@ -855,7 +824,7 @@ async def api_draft_handler(request: web.Request) -> web.Response:
             message="Draft API unauthorized after initData verification",
             data={},
         )
-        # #endregion
+        
         return web.json_response({"ok": False, "error": "Unauthorized. Please close and reopen the editor."}, status=401)
         
     user_id = user.get("id")
@@ -889,7 +858,7 @@ async def api_draft_handler(request: web.Request) -> web.Response:
         DRAFT_PREVIEW.format(subject=subject, body=preview_body),
         build_action_kb(),
     )
-    # #region agent log
+    
     write_debug_log(
         run_id="pre-fix",
         hypothesis_id="H11",
@@ -897,6 +866,5 @@ async def api_draft_handler(request: web.Request) -> web.Response:
         message="Draft API processed successfully",
         data={"user_id": user_id},
     )
-    # #endregion
-    
+
     return web.json_response({"ok": True})

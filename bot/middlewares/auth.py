@@ -44,8 +44,7 @@ class AuthMiddleware(BaseMiddleware):
 
         session: AsyncSession = data.get("session")
         if not session:
-            # We must still try to call handler even if session is missing,
-            # but we can't do auth. This is a failsafe.
+
             logger.error(
                 "AUTH: session missing before auth for user_id=%s event_type=%s",
                 user_id,
@@ -75,21 +74,21 @@ class AuthMiddleware(BaseMiddleware):
                     is_active=True,
                     last_seen=datetime.now(timezone.utc),
                 )
-                # Only persist new users from private chats or if owner
+                
                 if is_private or user_id == settings.bot.owner_id:
                     session.add(bot_user)
                     await session.commit()
                     await session.refresh(bot_user)
-                # If not private, bot_user stays transient (not in DB)
+                
             else:
                 bot_user.last_seen = datetime.now(timezone.utc)
                 bot_user.username = user_name
                 bot_user.full_name = full_name or bot_user.full_name
                 await session.commit()
         except Exception as e:
-            # SIDE EFFECT: logs to stderr. Why necessary: only signal of silent auth DB failures.
+            
             logger.error("AUTH-DB-ERR [auth_middleware] user_id=%s err=%s", user_id, e, exc_info=True)
-            # Create a transient user so handler doesn't crash on missing bot_user
+            
             bot_user = BotUser(
                 id=user_id,
                 username=user_name,
@@ -117,12 +116,11 @@ class AuthMiddleware(BaseMiddleware):
                 await event.callback_query.answer(ACCOUNT_DEACTIVATED, show_alert=True)
             return
 
-        # Restrict PENDING users in Private chats
         if bot_user.role == UserRole.PENDING and is_private:
             is_start = event.message and event.message.text and event.message.text.startswith("/start")
             is_code = event.message and event.message.text and "-" in event.message.text
             if not (is_start or is_code):
-                # #region agent log
+                
                 write_debug_log(
                     run_id="pre-fix",
                     hypothesis_id="H3",
@@ -130,7 +128,7 @@ class AuthMiddleware(BaseMiddleware):
                     message="Auth blocked pending user request",
                     data={"user_id": user_id, "is_private": is_private, "text": event.message.text if event.message else None},
                 )
-                # #endregion
+                
                 if event.message:
                     await event.message.answer(PENDING_ACCESS)
                 elif event.callback_query:

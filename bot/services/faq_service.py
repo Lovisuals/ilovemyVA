@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.models.faq_entry import FaqEntry
 
-
 class FaqService:
     @staticmethod
     async def list_all(session: AsyncSession) -> List[FaqEntry]:

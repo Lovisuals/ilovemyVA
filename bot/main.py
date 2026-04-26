@@ -31,14 +31,12 @@ from bot.middlewares.logging_mw import LoggingMiddleware
 from bot.middlewares.error_handler import ErrorHandlerMiddleware
 from bot.scheduler.setup import setup_scheduler
 
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 WEBHOOK_SECRET = settings.bot.webhook_secret
 LAST_WEBHOOK_HIT_MONOTONIC = time.monotonic()
 WEBHOOK_IDLE_FALLBACK_SECONDS = 45
-
 
 def run_migrations():
     try:
@@ -47,14 +45,12 @@ def run_migrations():
     except Exception as e:
         logger.error("Migration failed — bot may be unstable: %s", e, exc_info=True)
 
-
 async def _deferred_startup(bot: Bot, dp: Dispatcher):
     logger.info("STARTUP: Waiting 5s for web server stability...")
     await asyncio.sleep(5)
     
     logger.info("STARTUP: Running deferred startup tasks...")
-    
-    # 1. Register Webhook/Polling IMMEDIATELY so the bot is "online"
+
     try:
         if settings.bot.webhook_url:
             base_url = settings.bot.webhook_url.rstrip("/")
@@ -93,7 +89,6 @@ async def _deferred_startup(bot: Bot, dp: Dispatcher):
     except Exception as e:
         logger.error("STARTUP: Webhook/Polling registration FAIL: %s", e)
 
-
     try:
         watchdog_task = asyncio.create_task(_runtime_watchdog(bot, dp))
         dp["watchdog_task"] = watchdog_task
@@ -124,7 +119,7 @@ async def _deferred_startup(bot: Bot, dp: Dispatcher):
 
     try:
         scheduler = await asyncio.wait_for(setup_scheduler(), timeout=15.0)
-        # APScheduler 4.0.0aX requires __aenter__ for initialization
+        
         await scheduler.__aenter__()
         asyncio.create_task(scheduler.run_until_stopped())
         dp["scheduler"] = scheduler
@@ -147,7 +142,6 @@ async def _run_migrations_non_blocking():
         logger.error("STARTUP: Migration TIMEOUT after 120s — continuing runtime")
     except Exception as e:
         logger.error("STARTUP: Migration FAILED: %s", e, exc_info=True)
-
 
 async def _runtime_watchdog(bot: Bot, dp: Dispatcher):
     while True:
@@ -181,11 +175,9 @@ async def _runtime_watchdog(bot: Bot, dp: Dispatcher):
             logger.warning("WATCHDOG: failed to fetch bot/webhook status: %s", e)
         await asyncio.sleep(10)
 
-
 async def on_startup(bot: Bot, **kwargs):
     dp = kwargs.get("dispatcher")
     asyncio.create_task(_deferred_startup(bot, dp))
-
 
 async def on_shutdown(bot: Bot, **kwargs):
     dp = kwargs.get("dispatcher")
@@ -216,10 +208,8 @@ async def on_shutdown(bot: Bot, **kwargs):
     except Exception:
         pass
 
-
 async def health_check(_request: web.Request) -> web.Response:
     return web.json_response({"status": "ok", "version": "1.4.5"})
-
 
 async def editor_handler(_request: web.Request) -> web.Response:
     api_base = (settings.bot.webhook_url or "").rstrip("/")
@@ -228,7 +218,6 @@ async def editor_handler(_request: web.Request) -> web.Response:
     injection = f'<script>window.__API_BASE__ = "{api_base}";</script>'
     html = html.replace("</head>", f"{injection}\n</head>", 1)
     return web.Response(text=html, content_type="text/html", charset="utf-8")
-
 
 @web.middleware
 async def request_trace_middleware(request: web.Request, handler):
@@ -243,12 +232,9 @@ async def request_trace_middleware(request: web.Request, handler):
         )
     return await handler(request)
 
-
 def main():
     logger.info("MAIN: Starting bot initialization...")
 
-    # Migrations moved to _deferred_startup to avoid blocking web server start
-    
     bot = Bot(token=settings.bot.token)
     dp = Dispatcher()
     
@@ -295,7 +281,6 @@ def main():
     setup_application(app, dp, bot=bot)
     logger.info("MAIN: Handlers configured. Starting web server...")
     web.run_app(app, host="0.0.0.0", port=settings.bot.port)
-
 
 if __name__ == "__main__":
     main()

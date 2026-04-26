@@ -7,7 +7,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from database.base import Base
 
-
 class BotPersona(Base):
     __tablename__ = "bot_personas"
 

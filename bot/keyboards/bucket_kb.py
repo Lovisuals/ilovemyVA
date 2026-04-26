@@ -6,11 +6,9 @@ from bot.keyboards.menu_kb import MENU_BTN
 from bot.keyboards.pagination_kb import build_paginator_buttons
 from bot.models.content_item import ContentBucket
 
-
 def build_bucket_panel(bucket_name: str, items, page: int, total_pages: int) -> InlineKeyboardMarkup:
     bucket = ContentBucket(bucket_name)
     return build_content_list(items, bucket, page, total_pages)
-
 
 def build_bucket_list() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -25,7 +23,6 @@ def build_bucket_list() -> InlineKeyboardMarkup:
     builder.adjust(2)
     builder.row(MENU_BTN)
     return builder.as_markup()
-
 
 def build_content_list(items, bucket: ContentBucket, page: int, total_pages: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()

@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.models.persona import BotPersona
 
-
 class PersonaService:
     _active_cache: Optional[BotPersona] = None
     _cache_time: float = 0
@@ -23,8 +22,7 @@ class PersonaService:
             select(BotPersona).where(BotPersona.is_active == True)
         )
         persona = result.scalar_one_or_none()
-        
-        # SIDE EFFECT: Mutates static cache _active_cache. Why necessary and unavoidable: To reduce DB load by caching the frequently accessed active persona.
+
         PersonaService._active_cache = persona
         PersonaService._cache_time = now
         return persona

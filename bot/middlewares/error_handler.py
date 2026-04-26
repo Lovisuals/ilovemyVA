@@ -12,7 +12,6 @@ from bot.utils.debug_log import write_debug_log
 
 logger = logging.getLogger(__name__)
 
-
 class ErrorHandlerMiddleware(BaseMiddleware):
     async def __call__(
         self,
@@ -25,7 +24,7 @@ class ErrorHandlerMiddleware(BaseMiddleware):
         except Exception as e:
             error_trace = traceback.format_exc()
             logger.error("Unhandled exception: %s\n%s", e, error_trace)
-            # #region agent log
+            
             write_debug_log(
                 run_id="pre-fix",
                 hypothesis_id="H4",
@@ -33,7 +32,6 @@ class ErrorHandlerMiddleware(BaseMiddleware):
                 message="Unhandled exception captured in middleware",
                 data={"error": str(e)},
             )
-            # #endregion
 
             user_id = None
             if event.message and event.message.from_user:

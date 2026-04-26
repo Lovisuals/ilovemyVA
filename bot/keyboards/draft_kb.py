@@ -9,7 +9,6 @@ from bot.callbacks import (
 from bot.keyboards.menu_kb import MENU_BTN
 from bot.config import settings
 
-
 def _editor_url() -> Optional[str]:
     if settings.bot.webhook_url:
         return f"{settings.bot.webhook_url}/static/editor.html"
@@ -31,10 +30,8 @@ _TIME_SLOTS = [
     ("⌨️ Custom…", "custom"),
 ]
 
-
 def _cancel_btn() -> InlineKeyboardButton:
     return InlineKeyboardButton(text="✕ Cancel", callback_data=PostAction(action="cancel").pack())
-
 
 def build_step1_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -51,7 +48,6 @@ def build_step1_kb() -> InlineKeyboardMarkup:
         builder.row(_cancel_btn())
     return builder.as_markup()
 
-
 def build_step2_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     url = _editor_url()
@@ -64,7 +60,6 @@ def build_step2_kb() -> InlineKeyboardMarkup:
         _cancel_btn(),
     )
     return builder.as_markup()
-
 
 def build_action_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -89,7 +84,6 @@ def build_action_kb() -> InlineKeyboardMarkup:
     builder.row(_cancel_btn())
     return builder.as_markup()
 
-
 def build_sched_type_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
@@ -101,7 +95,6 @@ def build_sched_type_kb() -> InlineKeyboardMarkup:
     )
     return builder.as_markup()
 
-
 def build_time_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for label, slot in _TIME_SLOTS:
@@ -111,7 +104,6 @@ def build_time_kb() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="← Back", callback_data=TimeSlot(slot="back").pack()),
     )
     return builder.as_markup()
-
 
 def build_multi_time_kb(selected_slots: List[str]) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -131,7 +123,6 @@ def build_multi_time_kb(selected_slots: List[str]) -> InlineKeyboardMarkup:
     )
     return builder.as_markup()
 
-
 def build_custom_time_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
@@ -139,14 +130,12 @@ def build_custom_time_kb() -> InlineKeyboardMarkup:
     )
     return builder.as_markup()
 
-
 def build_datetime_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="← Back", callback_data=SchedType(sched_type="back").pack()),
     )
     return builder.as_markup()
-
 
 def build_day_kb(selected: List[str]) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -168,7 +157,6 @@ def build_day_kb(selected: List[str]) -> InlineKeyboardMarkup:
         ),
     )
     return builder.as_markup()
-
 
 def build_target_kb(
     chats: list,
@@ -197,7 +185,6 @@ def build_target_kb(
         ),
     )
     return builder.as_markup()
-
 
 def build_report_kb(has_failed: bool) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()

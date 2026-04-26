@@ -4,7 +4,6 @@ from sqlalchemy import BigInteger, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 from database.base import Base
 
-
 class UserWarning(Base):
     __tablename__ = "user_warnings"
 

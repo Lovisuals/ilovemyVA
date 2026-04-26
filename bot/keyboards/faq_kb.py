@@ -7,7 +7,6 @@ from bot.callbacks import FaqAction, NavData
 from bot.keyboards.menu_kb import MENU_BTN
 from bot.models.faq_entry import FaqEntry
 
-
 def build_faq_list(entries: List[FaqEntry]) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for e in entries:
@@ -23,7 +22,6 @@ def build_faq_list(entries: List[FaqEntry]) -> InlineKeyboardMarkup:
     )
     builder.row(MENU_BTN)
     return builder.as_markup()
-
 
 def build_faq_actions(entry_id: str, is_active: bool) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()

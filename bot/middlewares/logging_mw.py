@@ -24,7 +24,7 @@ class LoggingMiddleware(BaseMiddleware):
             user_id = event.callback_query.from_user.id
 
         update_type = event.event_type
-        # #region agent log
+        
         write_debug_log(
             run_id="pre-fix",
             hypothesis_id="H2",
@@ -32,7 +32,6 @@ class LoggingMiddleware(BaseMiddleware):
             message="Update reached logging middleware",
             data={"user_id": user_id, "update_type": update_type},
         )
-        # #endregion
 
         response = await handler(event, data)
 
@@ -43,7 +42,7 @@ class LoggingMiddleware(BaseMiddleware):
             update_type=update_type,
             duration_ms=round(duration * 1000, 2)
         )
-        # #region agent log
+        
         write_debug_log(
             run_id="pre-fix",
             hypothesis_id="H2",
@@ -51,6 +50,5 @@ class LoggingMiddleware(BaseMiddleware):
             message="Update finished handler chain",
             data={"user_id": user_id, "update_type": update_type, "duration_ms": round(duration * 1000, 2)},
         )
-        # #endregion
 
         return response

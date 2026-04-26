@@ -25,7 +25,6 @@ from bot.strings import (
 logger = logging.getLogger(__name__)
 router = Router()
 
-
 async def _require_admin(bot: Bot, chat_id: int, user_id: int) -> bool:
     try:
         m = await bot.get_chat_member(chat_id, user_id)
@@ -33,10 +32,8 @@ async def _require_admin(bot: Bot, chat_id: int, user_id: int) -> bool:
     except Exception:
         return False
 
-
 def _mention(user) -> str:
     return f"@{user.username}" if user.username else user.full_name
-
 
 def _panel_kb(chat_id: int, gs, welcome_active: bool) -> any:
     builder = InlineKeyboardBuilder()
@@ -60,7 +57,6 @@ def _panel_kb(chat_id: int, gs, welcome_active: bool) -> any:
     builder.adjust(2)
     builder.row(MENU_BTN)
     return builder.as_markup()
-
 
 async def _show_panel(bot_or_query, chat_id: int, session: AsyncSession, edit: bool = False):
     if isinstance(bot_or_query, CallbackQuery):
@@ -93,7 +89,6 @@ async def _show_panel(bot_or_query, chat_id: int, session: AsyncSession, edit: b
     except TelegramBadRequest:
         pass
 
-
 @router.callback_query(NavData.filter(F.section == "groups"))
 async def nav_groups(query: CallbackQuery, bot_user: BotUser, session: AsyncSession):
     if bot_user.role not in (UserRole.ADMIN, UserRole.SUPERADMIN):
@@ -121,7 +116,6 @@ async def nav_groups(query: CallbackQuery, bot_user: BotUser, session: AsyncSess
     await query.message.edit_text(GROUP_SETTINGS_LIST, reply_markup=builder.as_markup())
     await query.answer()
 
-
 @router.callback_query(GroupChatConfig.filter(F.action == "view"))
 async def group_view(query: CallbackQuery, callback_data: GroupChatConfig,
                      bot_user: BotUser, session: AsyncSession):
@@ -129,7 +123,6 @@ async def group_view(query: CallbackQuery, callback_data: GroupChatConfig,
         await query.answer(); return
     await _show_panel(query, callback_data.chat_id, session, edit=True)
     await query.answer()
-
 
 @router.callback_query(GroupChatConfig.filter(F.action == "toggle_mod"))
 async def toggle_mod(query: CallbackQuery, callback_data: GroupChatConfig,
@@ -141,7 +134,6 @@ async def toggle_mod(query: CallbackQuery, callback_data: GroupChatConfig,
     await _show_panel(query, callback_data.chat_id, session, edit=True)
     await query.answer()
 
-
 @router.callback_query(GroupChatConfig.filter(F.action == "toggle_link"))
 async def toggle_link(query: CallbackQuery, callback_data: GroupChatConfig,
                       bot_user: BotUser, session: AsyncSession):
@@ -151,7 +143,6 @@ async def toggle_link(query: CallbackQuery, callback_data: GroupChatConfig,
     await GroupSettingsService.upsert(session, callback_data.chat_id, link_filter=not gs.link_filter)
     await _show_panel(query, callback_data.chat_id, session, edit=True)
     await query.answer()
-
 
 @router.callback_query(GroupChatConfig.filter(F.action == "cycle_warn"))
 async def cycle_warn(query: CallbackQuery, callback_data: GroupChatConfig,
@@ -163,7 +154,6 @@ async def cycle_warn(query: CallbackQuery, callback_data: GroupChatConfig,
     await GroupSettingsService.upsert(session, callback_data.chat_id, warn_limit=new_limit)
     await _show_panel(query, callback_data.chat_id, session, edit=True)
     await query.answer(f"Warn limit set to {new_limit}")
-
 
 @router.callback_query(GroupChatConfig.filter(F.action == "edit_kw"))
 async def edit_kw_start(query: CallbackQuery, callback_data: GroupChatConfig,
@@ -177,7 +167,6 @@ async def edit_kw_start(query: CallbackQuery, callback_data: GroupChatConfig,
     await query.message.edit_text(GROUP_KW_ENTER, reply_markup=builder.as_markup())
     await query.answer()
 
-
 @router.message(GroupKwSetup.ENTERING_KEYWORDS, F.chat.type == "private")
 async def edit_kw_received(message: Message, state: FSMContext, session: AsyncSession):
     data     = await state.get_data()
@@ -188,7 +177,6 @@ async def edit_kw_received(message: Message, state: FSMContext, session: AsyncSe
     await GroupSettingsService.upsert(session, chat_id, keyword_list=kw_json)
     await state.clear()
     await message.answer(GROUP_KW_SAVED.format(count=len(keywords)), reply_markup=build_menu_row())
-
 
 @router.callback_query(GroupChatConfig.filter(F.action == "toggle_welcome"))
 async def toggle_welcome(query: CallbackQuery, callback_data: GroupChatConfig,
@@ -203,7 +191,6 @@ async def toggle_welcome(query: CallbackQuery, callback_data: GroupChatConfig,
         await session.commit()
     await _show_panel(query, callback_data.chat_id, session, edit=True)
     await query.answer()
-
 
 @router.callback_query(GroupChatConfig.filter(F.action == "edit_welcome"))
 async def edit_welcome_start(query: CallbackQuery, callback_data: GroupChatConfig,
@@ -220,7 +207,6 @@ async def edit_welcome_start(query: CallbackQuery, callback_data: GroupChatConfi
         reply_markup=builder.as_markup(),
     )
     await query.answer()
-
 
 @router.message(Command("warn"), F.chat.type.in_({"group", "supergroup"}))
 async def cmd_warn(message: Message, bot: Bot, session: AsyncSession):
@@ -245,7 +231,6 @@ async def cmd_warn(message: Message, bot: Bot, session: AsyncSession):
     else:
         await message.reply(f"⚠️ {mention} warned ({count}/{gs.warn_limit}). Reason: {reason}")
 
-
 @router.message(Command("unwarn"), F.chat.type.in_({"group", "supergroup"}))
 async def cmd_unwarn(message: Message, bot: Bot, session: AsyncSession):
     if not await _require_admin(bot, message.chat.id, message.from_user.id):
@@ -256,7 +241,6 @@ async def cmd_unwarn(message: Message, bot: Bot, session: AsyncSession):
         return
     await WarnService.reset(session, message.chat.id, target.from_user.id)
     await message.reply(f"✅ Warnings cleared for {_mention(target.from_user)}.")
-
 
 @router.message(Command("warnings"), F.chat.type.in_({"group", "supergroup"}))
 async def cmd_warnings(message: Message, bot: Bot, session: AsyncSession):
@@ -270,7 +254,6 @@ async def cmd_warnings(message: Message, bot: Bot, session: AsyncSession):
     gs      = await GroupSettingsService.get_or_default(session, message.chat.id)
     mention = _mention(target.from_user)
     await message.reply(f"ℹ️ {mention} has {count}/{gs.warn_limit} warning(s).")
-
 
 @router.message(Command("kick"), F.chat.type.in_({"group", "supergroup"}))
 async def cmd_kick(message: Message, bot: Bot):
@@ -286,7 +269,6 @@ async def cmd_kick(message: Message, bot: Bot):
         await message.reply(f"👢 {_mention(target.from_user)} was kicked.")
     except TelegramBadRequest as e:
         await message.reply(f"Could not kick: {e}")
-
 
 @router.message(Command("ban"), F.chat.type.in_({"group", "supergroup"}))
 async def cmd_ban(message: Message, bot: Bot):

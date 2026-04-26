@@ -8,7 +8,6 @@ DEBUG_LOG_PATH = Path(__file__).resolve().parents[2] / "debug-9a0089.log"
 SESSION_ID = "9a0089"
 INGEST_ENDPOINT = "http://127.0.0.1:7846/ingest/e1674615-b504-4fd4-8f3a-1565d91c124e"
 
-
 def write_debug_log(*, run_id: str, hypothesis_id: str, location: str, message: str, data: dict[str, Any]) -> None:
     payload = {
         "sessionId": SESSION_ID,

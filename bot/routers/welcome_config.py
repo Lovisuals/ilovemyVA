@@ -18,13 +18,11 @@ from bot.strings import (
 
 router = Router()
 
-
 async def _get_config(session: AsyncSession, chat_id: int):
     result = await session.execute(
         select(WelcomeConfig).where(WelcomeConfig.chat_id == chat_id)
     )
     return result.scalar_one_or_none()
-
 
 @router.callback_query(NavData.filter(F.section == "welcome"))
 async def nav_welcome(query: CallbackQuery, bot_user: BotUser, session: AsyncSession):
@@ -33,7 +31,6 @@ async def nav_welcome(query: CallbackQuery, bot_user: BotUser, session: AsyncSes
         return
     from bot.routers.group_admin import nav_groups
     await nav_groups(query, bot_user, session)
-
 
 @router.callback_query(NavData.filter(F.section == "welcome_edit"))
 async def welcome_edit_start(query: CallbackQuery, bot_user: BotUser, state: FSMContext):
@@ -45,7 +42,6 @@ async def welcome_edit_start(query: CallbackQuery, bot_user: BotUser, state: FSM
     builder.button(text="← Cancel", callback_data=NavData(section="welcome").pack())
     await query.message.edit_text(WELCOME_ENTER_MESSAGE, reply_markup=builder.as_markup())
     await query.answer()
-
 
 @router.message(WelcomeSetup.ENTERING_MESSAGE)
 async def welcome_message_received(
@@ -67,7 +63,6 @@ async def welcome_message_received(
     await session.commit()
     await message.answer(WELCOME_SAVED, reply_markup=build_menu_row())
 
-
 @router.callback_query(NavData.filter(F.section == "welcome_toggle"))
 async def welcome_toggle(query: CallbackQuery, session: AsyncSession):
     config = await _get_config(session, settings.bot.main_channel_id)
@@ -77,7 +72,6 @@ async def welcome_toggle(query: CallbackQuery, session: AsyncSession):
         text = WELCOME_ENABLED if config.is_active else WELCOME_DISABLED
         await query.answer(text, show_alert=True)
     await query.answer()
-
 
 @router.chat_member(F.new_chat_member.status.in_({"member"}))
 async def on_new_member(update: ChatMemberUpdated, bot: Bot, session: AsyncSession):

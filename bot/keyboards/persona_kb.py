@@ -7,7 +7,6 @@ from bot.callbacks import NavData, PersonaAction
 from bot.keyboards.menu_kb import MENU_BTN
 from bot.models.persona import BotPersona
 
-
 def build_persona_list(personas: List[BotPersona]) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for p in personas:
@@ -23,7 +22,6 @@ def build_persona_list(personas: List[BotPersona]) -> InlineKeyboardMarkup:
     )
     builder.row(MENU_BTN)
     return builder.as_markup()
-
 
 def build_persona_actions(persona_id: str, is_active: bool) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()

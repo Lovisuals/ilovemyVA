@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.models.group_settings import GroupSettings
 from bot.models.user_warning import UserWarning
 
-
 class GroupSettingsService:
 
     @staticmethod
@@ -33,7 +32,6 @@ class GroupSettingsService:
         gs.updated_at = datetime.now(timezone.utc)
         await session.commit()
         return gs
-
 
 class WarnService:
 

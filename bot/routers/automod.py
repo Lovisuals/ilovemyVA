@@ -23,12 +23,10 @@ _admin_cache: dict[tuple[int, int], tuple[bool, float]] = {}
 _CACHE_TTL = 120
 _MAX_CACHE_SIZE = 1000
 
-
 async def _is_admin(bot: Bot, chat_id: int, user_id: int) -> bool:
     now  = time.monotonic()
     key  = (chat_id, user_id)
-    
-    # SIDE EFFECT: Mutates global _admin_cache. Why necessary and unavoidable: To persist admin status across handler calls and reduce API overhead.
+
     hit  = _admin_cache.get(key)
     if hit and now < hit[1]:
         return hit[0]
@@ -40,7 +38,7 @@ async def _is_admin(bot: Bot, chat_id: int, user_id: int) -> bool:
         result = False
         
     if len(_admin_cache) >= _MAX_CACHE_SIZE:
-        # Evict oldest entry (first inserted in Python 3.7+ dicts)
+        
         try:
             oldest = next(iter(_admin_cache))
             del _admin_cache[oldest]
@@ -49,7 +47,6 @@ async def _is_admin(bot: Bot, chat_id: int, user_id: int) -> bool:
             
     _admin_cache[key] = (result, now + _CACHE_TTL)
     return result
-
 
 async def _warn_and_maybe_kick(
     bot: Bot, session: AsyncSession,
@@ -82,7 +79,6 @@ async def _warn_and_maybe_kick(
             f"⚠️ {mention} — {reason}\n"
             f"Warning {count}/{warn_limit}. Reach the limit to be removed.",
         )
-
 
 @router.message(
     F.chat.type.in_({"group", "supergroup"}),

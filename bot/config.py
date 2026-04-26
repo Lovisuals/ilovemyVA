@@ -59,15 +59,11 @@ class DatabaseSettings(BaseSettings):
             url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
         return url
 
-
-
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     bot: BotSettings
     database: DatabaseSettings
-
-
 
     @property
     def redis_url(self) -> Optional[str]:
