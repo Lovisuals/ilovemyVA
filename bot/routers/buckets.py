@@ -29,6 +29,7 @@ async def on_item_action(
     action  = callback_data.action
 
     if action == "view":
+        await query.answer()
         item = await ContentService.get_by_id(session, item_id)
         if item:
             kb = build_item_actions(str(item.id), item.bucket)
@@ -39,14 +40,13 @@ async def on_item_action(
                 await query.message.edit_text(text, reply_markup=kb)
             except Exception:
                 pass
-        await query.answer()
 
     elif action == "delete":
         if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
             await query.answer()
             return
-        await ContentService.delete_item(session, item_id)
         await query.answer("Item deleted.")
+        await ContentService.delete_item(session, item_id)
         kb = build_bucket_list()
         try:
             await query.message.edit_text("📂 Content Library\n\nSelect a bucket:", reply_markup=kb)
@@ -54,6 +54,7 @@ async def on_item_action(
             pass
 
     elif action == "back":
+        await query.answer()
         item = await ContentService.get_by_id(session, item_id)
         bucket = item.bucket if item else ContentBucket.DRAFTS
         items, total = await ContentService.get_page(session, bucket, 1, 10)
@@ -62,7 +63,6 @@ async def on_item_action(
             await query.message.edit_text(BUCKET_TITLE.format(bucket=bucket.value), reply_markup=kb)
         except Exception:
             pass
-        await query.answer()
 
     else:
         await query.answer()

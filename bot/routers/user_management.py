@@ -25,6 +25,7 @@ async def cmd_users(message: Message, bot_user: BotUser, session: AsyncSession):
 
 @router.callback_query(F.data.startswith("usr_p:"))
 async def on_user_page(query: CallbackQuery, bot_user: BotUser, session: AsyncSession):
+    await query.answer()
     if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
         return
 
@@ -32,7 +33,6 @@ async def on_user_page(query: CallbackQuery, bot_user: BotUser, session: AsyncSe
     users, total = await UserService.get_page(session, page, 10)
     kb = build_user_list(users, page, (total + 9) // 10)
     await query.message.edit_reply_markup(reply_markup=kb)
-    await query.answer()
 
 @router.callback_query(F.data.startswith("usr_a:"))
 async def on_user_action(query: CallbackQuery, bot_user: BotUser, session: AsyncSession):
@@ -41,6 +41,7 @@ async def on_user_action(query: CallbackQuery, bot_user: BotUser, session: Async
     action = parts[2]
 
     if action == "view":
+        await query.answer()
         target = await UserService.get_by_id(session, target_id)
         if target:
             target_is_owner = (target.id == settings.bot.owner_id)
@@ -49,19 +50,18 @@ async def on_user_action(query: CallbackQuery, bot_user: BotUser, session: Async
                 f"User Info\n\nName: {target.full_name}\nRole: {target.role.value}\nJoined: {target.joined_at}",
                 reply_markup=kb
             )
-        await query.answer()
     elif action == "promote":
         if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
             await query.answer("Unauthorized", show_alert=True)
             return
-        await UserService.promote(session, target_id, bot_user.id)
         await query.answer(f"User {target_id} promoted to Admin.")
+        await UserService.promote(session, target_id, bot_user.id)
     elif action == "promote_super":
         if bot_user.role != UserRole.SUPERADMIN:
             await query.answer("Unauthorized", show_alert=True)
             return
-        await UserService.promote_to_superadmin(session, target_id, bot_user.id)
         await query.answer(f"User {target_id} promoted to Super Admin.")
+        await UserService.promote_to_superadmin(session, target_id, bot_user.id)
     elif action == "demote":
         if bot_user.role != UserRole.SUPERADMIN:
             await query.answer("Unauthorized", show_alert=True)
@@ -69,8 +69,8 @@ async def on_user_action(query: CallbackQuery, bot_user: BotUser, session: Async
         if target_id == settings.bot.owner_id:
             await query.answer(CANNOT_DEMOTE_OWNER, show_alert=True)
             return
-        await UserService.demote(session, target_id)
         await query.answer(f"User {target_id} demoted to User.")
+        await UserService.demote(session, target_id)
     elif action == "demote_admin":
         if bot_user.role != UserRole.SUPERADMIN:
             await query.answer("Unauthorized", show_alert=True)
@@ -78,8 +78,8 @@ async def on_user_action(query: CallbackQuery, bot_user: BotUser, session: Async
         if target_id == settings.bot.owner_id:
             await query.answer(CANNOT_DEMOTE_OWNER, show_alert=True)
             return
-        await UserService.demote_to_admin(session, target_id)
         await query.answer(f"User {target_id} demoted to Admin.")
+        await UserService.demote_to_admin(session, target_id)
     elif action == "remove":
         if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
             await query.answer("Unauthorized", show_alert=True)
@@ -87,7 +87,7 @@ async def on_user_action(query: CallbackQuery, bot_user: BotUser, session: Async
         if target_id == settings.bot.owner_id:
             await query.answer(CANNOT_DEMOTE_OWNER, show_alert=True)
             return
-        await UserService.deactivate(session, target_id)
         await query.answer(f"User {target_id} deactivated.")
+        await UserService.deactivate(session, target_id)
     else:
         await query.answer()
