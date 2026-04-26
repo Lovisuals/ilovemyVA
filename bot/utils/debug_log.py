@@ -1,41 +1,43 @@
-import json
-import time
-from pathlib import Path
+"""
+DEPRECATED — Compatibility shim.
+=================================
+
+All callers should migrate to ``bot.utils.sniffer.sniffer``.
+
+This file is kept only so that any stale import of ``write_debug_log`` does
+not crash the process.  It silently redirects into the production sniffer.
+"""
+
+import asyncio
+import logging
 from typing import Any
-from urllib import request
 
-DEBUG_LOG_PATH = Path(__file__).resolve().parents[2] / "debug-9a0089.log"
-SESSION_ID = "9a0089"
-INGEST_ENDPOINT = "http://127.0.0.1:7846/ingest/e1674615-b504-4fd4-8f3a-1565d91c124e"
+logger = logging.getLogger(__name__)
 
-def write_debug_log(*, run_id: str, hypothesis_id: str, location: str, message: str, data: dict[str, Any]) -> None:
-    payload = {
-        "sessionId": SESSION_ID,
-        "runId": run_id,
-        "hypothesisId": hypothesis_id,
-        "location": location,
-        "message": message,
-        "data": data,
-        "timestamp": int(time.time() * 1000),
-    }
+
+def write_debug_log(
+    *, run_id: str, hypothesis_id: str, location: str, message: str, data: dict[str, Any]
+) -> None:
+    """
+    Legacy shim — fires into the sniffer (best-effort, non-blocking).
+    """
     try:
-        body = json.dumps(payload, ensure_ascii=True).encode("utf-8")
-        req = request.Request(
-            INGEST_ENDPOINT,
-            data=body,
-            headers={
-                "Content-Type": "application/json",
-                "X-Debug-Session-Id": SESSION_ID,
-            },
-            method="POST",
-        )
-        request.urlopen(req, timeout=1.0).read()
-    except Exception:
-        pass
+        from bot.utils.sniffer import sniffer
 
-    try:
-        DEBUG_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with DEBUG_LOG_PATH.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(payload, ensure_ascii=True) + "\n")
-    except Exception:
-        pass
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.ensure_future(sniffer.capture(
+                source=f"debug_log_compat:{location}",
+                event=hypothesis_id,
+                severity="WARNING",
+                run_id=run_id,
+                message=message,
+                **data,
+            ))
+        else:
+            logger.warning(
+                "DEPRECATED debug_log (no event loop): %s | %s | %s",
+                location, message, data,
+            )
+    except Exception as e:
+        logger.warning("debug_log shim failed: %s", e)

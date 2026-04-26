@@ -29,7 +29,9 @@ from bot.middlewares.db_session import DbSessionMiddleware
 from bot.middlewares.rate_limit import RateLimitMiddleware
 from bot.middlewares.logging_mw import LoggingMiddleware
 from bot.middlewares.error_handler import ErrorHandlerMiddleware
+from bot.middlewares.scheduler_mw import SchedulerMiddleware
 from bot.scheduler.setup import setup_scheduler
+from bot.utils.sniffer import sniffer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -119,16 +121,30 @@ async def _deferred_startup(bot: Bot, dp: Dispatcher):
 
     try:
         scheduler = await asyncio.wait_for(setup_scheduler(), timeout=15.0)
-        
         await scheduler.__aenter__()
         asyncio.create_task(scheduler.run_until_stopped())
         dp["scheduler"] = scheduler
+        # Store the shared bot in dp so publish_content_job can reuse its session
+        dp["shared_bot"] = bot
         logger.info("STARTUP: Scheduler is now active (APScheduler 4.x).")
     except (Exception, asyncio.TimeoutError) as e:
         logger.warning("STARTUP: Scheduler failed to start: %s", e)
+        await sniffer.capture(
+            source="_deferred_startup",
+            event="scheduler_start_failed",
+            severity="CRITICAL",
+            error=str(e),
+        )
+
+    # Wire sniffer to live bot so CRITICAL events reach the owner on Telegram
+    sniffer.configure(bot=bot, owner_id=settings.bot.owner_id)
+    logger.info("STARTUP: Sniffer wired to bot (owner_id=%s).", settings.bot.owner_id)
 
     try:
-        await bot.send_message(settings.bot.owner_id, f"✅ **MedLocum Bot Online**\nVersion: 1.4.5\nStatus: Active")
+        await bot.send_message(
+            settings.bot.owner_id,
+            f"✅ **MedLocum Bot Online**\nVersion: 1.4.5\nStatus: Active",
+        )
     except Exception as e:
         logger.warning("STARTUP: Failed to notify owner: %s", e)
 
@@ -258,6 +274,8 @@ def main():
     dp.update.outer_middleware(DbSessionMiddleware())
     dp.update.outer_middleware(RateLimitMiddleware())
     dp.update.outer_middleware(AuthMiddleware())
+    # CRITICAL: must be registered AFTER DbSession so session is in data first
+    dp.update.outer_middleware(SchedulerMiddleware())
     
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)

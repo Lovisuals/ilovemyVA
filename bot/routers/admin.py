@@ -24,20 +24,20 @@ async def cmd_admin(message: Message, bot_user: BotUser, session: AsyncSession):
     me = await message.bot.get_me()
     stats = await SystemService.get_dashboard_data(session, me.username)
     text = (
-        "🕹 *APEX COMMAND CENTER*\n"
-        "─" * 20 + "\n"
-        f"🌐 *DB:* `{stats['db_status']}` | 🤖 *BOT:* `@{stats['bot_username']}`\n"
-        f"📦 *VAULT:* `{stats['storage_vault']}` (`{stats['vault_status']}`)\n"
-        "─" * 20 + "\n"
-        f"📅 *QUEUED:* `{stats['scheduled']}`  | 📝 *DRAFTS:* `{stats['drafts']}`\n"
-        f"👥 *TEAM:* `{stats['users']}`      | 🏘 *CHATS:* `{stats['chats']}`\n\n"
-        "*Recent Activity:*\n"
+        "Command Centre\n"
+        "─" * 28 + "\n"
+        f"DB: {stats['db_status']} | BOT: @{stats['bot_username']}\n"
+        f"VAULT: {stats['storage_vault']} ({stats['vault_status']})\n"
+        "─" * 28 + "\n"
+        f"QUEUED: {stats['scheduled']} | DRAFTS: {stats['drafts']}\n"
+        f"TEAM: {stats['users']} | CHATS: {stats['chats']}\n\n"
+        "Recent Activity:\n"
         f"{stats['audit_trail']}\n"
-        f"🕒 _Pulse: {stats['timestamp']}_"
+        f"Pulse: {stats['timestamp']}"
     )
     from bot.keyboards.admin_kb import build_admin_dashboard
     kb = build_admin_dashboard()
-    await message.answer(text, reply_markup=kb, parse_mode="Markdown")
+    await message.answer(text, reply_markup=kb)
 
 @router.callback_query(BucketSelect.filter())
 async def on_bucket_select(query: CallbackQuery, callback_data: BucketSelect, bot_user: BotUser, session: AsyncSession):
@@ -80,20 +80,20 @@ async def _render_dashboard(query: CallbackQuery, session: AsyncSession):
     me = await query.bot.get_me()
     stats = await SystemService.get_dashboard_data(session, me.username)
     text = (
-        "🕹 *APEX COMMAND CENTER*\n"
-        "─" * 20 + "\n"
-        f"🌐 *DB:* `{stats['db_status']}` | 🤖 *BOT:* `@{stats['bot_username']}`\n"
-        f"📦 *VAULT:* `{stats['storage_vault']}` (`{stats['vault_status']}`)\n"
-        "─" * 20 + "\n"
-        f"📅 *QUEUED:* `{stats['scheduled']}`  | 📝 *DRAFTS:* `{stats['drafts']}`\n"
-        f"👥 *TEAM:* `{stats['users']}`      | 🏘 *CHATS:* `{stats['chats']}`\n\n"
-        "*Recent Activity:*\n"
+        "Command Centre\n"
+        "─" * 28 + "\n"
+        f"DB: {stats['db_status']} | BOT: @{stats['bot_username']}\n"
+        f"VAULT: {stats['storage_vault']} ({stats['vault_status']})\n"
+        "─" * 28 + "\n"
+        f"QUEUED: {stats['scheduled']} | DRAFTS: {stats['drafts']}\n"
+        f"TEAM: {stats['users']} | CHATS: {stats['chats']}\n\n"
+        "Recent Activity:\n"
         f"{stats['audit_trail']}\n"
-        f"🕒 _Pulse: {stats['timestamp']}_"
+        f"Pulse: {stats['timestamp']}"
     )
     from bot.keyboards.admin_kb import build_admin_dashboard
     kb = build_admin_dashboard()
-    await query.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+    await query.message.edit_text(text, reply_markup=kb)
 
 @router.callback_query(ControlAction.filter(F.action == "health"))
 async def on_health_check(query: CallbackQuery, session: AsyncSession):
@@ -101,15 +101,15 @@ async def on_health_check(query: CallbackQuery, session: AsyncSession):
     stats = await SystemService.get_dashboard_data(session, me.username)
     webhook_status = "CONFIGURED" if settings.bot.webhook_url else "POLLING"
     health_report = (
-        "🩺 *System Health Report*\n\n"
-        f"✅ Database: {stats['db_status']}\n"
-        f"✅ Scheduler: ACTIVE ({stats['scheduled']} jobs)\n"
-        f"✅ Webhook: {webhook_status}\n"
-        "✅ Storage: 78% available\n"
-        "✅ AI Agent: READY"
+        "System Health Report\n\n"
+        f"Database: {stats['db_status']}\n"
+        f"Scheduler: ACTIVE ({stats['scheduled']} jobs)\n"
+        f"Webhook: {webhook_status}\n"
+        "Storage: 78% available\n"
+        "AI Agent: READY"
     )
     from bot.keyboards.admin_kb import build_admin_dashboard
-    await query.message.edit_text(health_report, reply_markup=build_admin_dashboard(), parse_mode="Markdown")
+    await query.message.edit_text(health_report, reply_markup=build_admin_dashboard())
     await query.answer("Health check complete")
 
 @router.callback_query(ControlAction.filter(F.action == "flush"))
@@ -176,8 +176,8 @@ async def on_audit_log(query: CallbackQuery, session: AsyncSession):
     stats = await SystemService.get_dashboard_data(session, me.username)
     audit = stats.get('audit_trail', 'No recent activity.')
     
-    text = f"📜 *System Audit Log*\n\n{audit}"
+    text = f"System Audit Log\n\n{audit}"
     from bot.keyboards.admin_kb import build_admin_dashboard
     kb = build_admin_dashboard()
-    await query.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+    await query.message.edit_text(text, reply_markup=kb)
     await query.answer()

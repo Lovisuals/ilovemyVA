@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import traceback
 from typing import Any, Awaitable, Callable, Dict
@@ -8,7 +9,7 @@ from aiogram.types import Update
 from bot.config import settings
 from bot.models.audit_log import AuditLog
 from database.session import async_session
-from bot.utils.debug_log import write_debug_log
+from bot.utils.sniffer import sniffer
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +25,15 @@ class ErrorHandlerMiddleware(BaseMiddleware):
         except Exception as e:
             error_trace = traceback.format_exc()
             logger.error("Unhandled exception: %s\n%s", e, error_trace)
-            
-            write_debug_log(
-                run_id="pre-fix",
-                hypothesis_id="H4",
-                location="bot/middlewares/error_handler.py:__call__",
-                message="Unhandled exception captured in middleware",
-                data={"error": str(e)},
-            )
+
+            # Fire sniffer — writes to audit_log + Telegram alert for CRITICAL
+            asyncio.ensure_future(sniffer.capture(
+                source="ErrorHandlerMiddleware",
+                event="unhandled_exception",
+                severity="CRITICAL",
+                error=str(e),
+                traceback=error_trace,
+            ))
 
             user_id = None
             if event.message and event.message.from_user:

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.config import settings
 from bot.models.bot_user import BotUser, UserRole
 from bot.strings import ACCOUNT_DEACTIVATED, PENDING_ACCESS
-from bot.utils.debug_log import write_debug_log
+from bot.utils.sniffer import sniffer
 
 logger = logging.getLogger(__name__)
 
@@ -120,15 +120,15 @@ class AuthMiddleware(BaseMiddleware):
             is_start = event.message and event.message.text and event.message.text.startswith("/start")
             is_code = event.message and event.message.text and "-" in event.message.text
             if not (is_start or is_code):
-                
-                write_debug_log(
-                    run_id="pre-fix",
-                    hypothesis_id="H3",
-                    location="bot/middlewares/auth.py:__call__",
-                    message="Auth blocked pending user request",
-                    data={"user_id": user_id, "is_private": is_private, "text": event.message.text if event.message else None},
-                )
-                
+                import asyncio
+                asyncio.ensure_future(sniffer.capture(
+                    source="AuthMiddleware",
+                    event="pending_user_blocked",
+                    severity="INFO",
+                    user_id=user_id,
+                    is_private=is_private,
+                    text=event.message.text if event.message else None,
+                ))
                 if event.message:
                     await event.message.answer(PENDING_ACCESS)
                 elif event.callback_query:
