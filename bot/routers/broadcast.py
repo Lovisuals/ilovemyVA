@@ -76,6 +76,7 @@ async def on_broadcast_confirm(
         await query.answer("Select at least one target.", show_alert=True)
         return
 
+    from sqlalchemy import select
     result = await session.execute(select(ContentItem).where(ContentItem.id == item_id))
     item = result.scalar_one_or_none()
     if not item:

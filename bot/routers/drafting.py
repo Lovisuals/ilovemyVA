@@ -37,6 +37,7 @@ from bot.strings import (
     DRAFT_STEP1_ERROR, DRAFT_STEP2, DRAFT_TARGETS, DRAFT_TIME_PICK, MENU_ADMIN,
 )
 
+logger = logging.getLogger(__name__)
 router = Router()
 
 _ALL_DAYS  = ["mo", "tu", "we", "th", "fr", "sa", "su"]

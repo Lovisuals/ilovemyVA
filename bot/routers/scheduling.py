@@ -5,6 +5,7 @@ import pytz
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.models.bot_user import BotUser, UserRole
@@ -154,6 +155,7 @@ async def target_confirm(
         return
 
     from bot.models.content_item import ContentItem
+    from sqlalchemy import select
     result = await session.execute(select(ContentItem).where(ContentItem.id == item_id))
     item = result.scalar_one_or_none()
     if item:

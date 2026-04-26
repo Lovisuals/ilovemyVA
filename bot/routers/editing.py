@@ -51,7 +51,7 @@ async def on_edit_text_submit(message: Message, state: FSMContext, session: Asyn
         item.tone_flags = tone_result.flags
         await session.commit()
 
-        kb = build_item_actions(str(item.id), item.bucket.value)
+        kb = build_item_actions(str(item.id), item.bucket)
         await message.answer(f"✅ Text updated successfully for item `{item_id}`", reply_markup=kb)
 
     await state.clear()
@@ -73,7 +73,7 @@ async def on_edit_tags_submit(message: Message, state: FSMContext, session: Asyn
         item.tags = tags
         await session.commit()
 
-        kb = build_item_actions(str(item.id), item.bucket.value)
+        kb = build_item_actions(str(item.id), item.bucket)
         await message.answer(f"✅ Tags updated successfully for item `{item_id}`", reply_markup=kb)
 
     await state.clear()
