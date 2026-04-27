@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.callbacks import ContentItemAction
+from bot.callbacks import ContentItemAction, ItemSchedule
 from bot.keyboards.menu_kb import MENU_BTN
 from bot.models.content_item import ContentBucket
 
@@ -17,7 +17,7 @@ def build_item_actions(item_id: str, bucket: ContentBucket) -> InlineKeyboardMar
     if bucket == ContentBucket.DRAFTS:
         builder.row(
             InlineKeyboardButton(text="✍️ Edit",      callback_data=f"item_ed:{item_id}"),
-            InlineKeyboardButton(text="📅 Schedule",  callback_data=f"item_sc:{item_id}"),
+            InlineKeyboardButton(text="📅 Schedule",  callback_data=ItemSchedule(item_id=item_id).pack()),
         )
         builder.row(
             InlineKeyboardButton(text="🚀 Broadcast", callback_data=f"item_br:{item_id}"),
@@ -25,7 +25,10 @@ def build_item_actions(item_id: str, bucket: ContentBucket) -> InlineKeyboardMar
         )
     elif bucket == ContentBucket.SCHEDULED:
         builder.row(
-            InlineKeyboardButton(text="❌ Unschedule", callback_data=f"item_sc:{item_id}"),
+            InlineKeyboardButton(text="🕒 Change Time", callback_data=ItemSchedule(item_id=item_id).pack()),
+            _btn("❌ Unschedule", item_id, "unschedule"),
+        )
+        builder.row(
             _btn("🗑 Delete", item_id, "delete"),
         )
     elif bucket == ContentBucket.PUBLISHED:

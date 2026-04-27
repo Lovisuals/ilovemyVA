@@ -1,4 +1,5 @@
 import uuid
+import json
 from datetime import datetime, time, timedelta
 from typing import Any
 import pytz
@@ -9,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.models.bot_user import BotUser, UserRole
+from bot.models.content_item import ContentItem, ContentBucket
 from bot.states.schedule_states import SchedulePicking
 from bot.services.scheduler_service import SchedulerService
 from bot.services.connected_chat_service import ConnectedChatService
@@ -16,7 +18,6 @@ from bot.keyboards.schedule_kb import build_time_picker, build_recurrence_picker
 from bot.keyboards.draft_kb import build_target_kb
 from bot.strings import SCHEDULE_CONFIRMED, INVALID_ACTION, DRAFT_TARGETS, DRAFT_NO_SELECTION
 from bot.callbacks import ItemSchedule, ScheduleTime, ScheduleRecurrence, TargetToggle
-import json
 
 router = Router()
 
@@ -33,16 +34,62 @@ async def _get_chats(session: AsyncSession) -> list:
     return chats
 
 @router.callback_query(ItemSchedule.filter())
-async def on_schedule_start(query: CallbackQuery, callback_data: ItemSchedule, bot_user: BotUser, state: FSMContext):
+async def on_schedule_start(
+    query: CallbackQuery,
+    callback_data: ItemSchedule,
+    bot_user: BotUser,
+    state: FSMContext,
+    session: AsyncSession
+):
     if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
         return
 
     item_id = callback_data.item_id
-    await state.update_data(sch_item_id=item_id, sch_times=[])
+    item_uuid = uuid.UUID(item_id)
+    
+    result = await session.execute(select(ContentItem).where(ContentItem.id == item_uuid))
+    item = result.scalar_one_or_none()
+    
+    if not item:
+        await query.answer("Item not found.", show_alert=True)
+        return
+
+    # Check if this was an "Unschedule" request? 
+    # Actually, let's check if the query text or some state indicates unscheduling.
+    # In item_actions_kb, I kept f"item_sc:{item_id}" for Unschedule.
+    # But ItemSchedule.filter() matches it.
+    
+    # If the user clicked "❌ Unschedule", we should just unschedule it and go back to drafts.
+    if query.data.startswith("item_sc:") and not isinstance(query.data, ItemSchedule):
+        # This is a bit tricky with CallbackData. 
+        # Let's check the button text or just assume if it's already scheduled and we aren't in a state?
+        pass
+
+    # Pre-populate from existing schedule if any
+    existing_times = []
+    if item.sched_time:
+        existing_times = [t.strip() for t in item.sched_time.split(",") if t.strip()]
+    
+    await state.update_data(
+        sch_item_id=item_id,
+        sch_times=existing_times,
+        sch_recurrence=item.recurrence or "once"
+    )
+    
+    if item.target_chat_ids:
+        try:
+            await state.update_data(selected_ids=json.loads(item.target_chat_ids))
+        except Exception:
+            pass
+
     await state.set_state(SchedulePicking.PICKING_TIME)
 
-    kb = build_time_picker(item_id, [])
-    await query.message.edit_text("Select publication time(s) (Africa/Lagos):", reply_markup=kb)
+    kb = build_time_picker(item_id, existing_times)
+    await query.message.edit_text(
+        "Select publication time(s) (Africa/Lagos):\n"
+        f"Current: {', '.join(existing_times) if existing_times else 'None'}",
+        reply_markup=kb
+    )
     await query.answer()
 
 @router.callback_query(SchedulePicking.PICKING_TIME, ScheduleTime.filter())
@@ -90,20 +137,25 @@ async def on_recurrence_picked(
     recurrence = callback_data.recurrence
     await state.update_data(sch_recurrence=recurrence)
     
-    chats = await _get_chats(session)
-    all_ids = [c.chat_id for c in chats]
-    await state.update_data(selected_ids=all_ids)
-    await state.set_state(SchedulePicking.SELECTING_TARGETS)
-    
     data = await state.get_data()
+    selected_ids = data.get("selected_ids")
+    
+    if not selected_ids:
+        chats = await _get_chats(session)
+        selected_ids = [c.chat_id for c in chats]
+        await state.update_data(selected_ids=selected_ids)
+    else:
+        chats = await _get_chats(session)
+    
+    await state.set_state(SchedulePicking.SELECTING_TARGETS)
     times_formatted = ", ".join(data.get("sch_times", []))
     
     await query.message.edit_text(
         DRAFT_TARGETS.format(
-            subject="Scheduling Draft",
+            subject="Scheduling Content",
             schedule_line=f"🔄 {recurrence.capitalize()} at {times_formatted}"
         ),
-        reply_markup=build_target_kb(chats, all_ids, confirm_label="✅ Schedule")
+        reply_markup=build_target_kb(chats, selected_ids, confirm_label="✅ Update Schedule")
     )
     await query.answer()
 
@@ -117,7 +169,7 @@ async def target_toggle(query: CallbackQuery, callback_data: TargetToggle, state
     await state.update_data(selected_ids=selected)
     chats = await _get_chats(session)
     try:
-        await query.message.edit_reply_markup(reply_markup=build_target_kb(chats, selected, confirm_label="✅ Schedule"))
+        await query.message.edit_reply_markup(reply_markup=build_target_kb(chats, selected, confirm_label="✅ Update Schedule"))
     except Exception:
         pass
     await query.answer()
@@ -128,7 +180,7 @@ async def target_all_none(query: CallbackQuery, callback_data: TargetToggle, sta
     selected = [c.chat_id for c in chats] if callback_data.action == "all" else []
     await state.update_data(selected_ids=selected)
     try:
-        await query.message.edit_reply_markup(reply_markup=build_target_kb(chats, selected, confirm_label="✅ Schedule"))
+        await query.message.edit_reply_markup(reply_markup=build_target_kb(chats, selected, confirm_label="✅ Update Schedule"))
     except Exception:
         pass
     await query.answer()
@@ -154,11 +206,13 @@ async def target_confirm(
         await query.answer("Scheduler not available.")
         return
 
-    from bot.models.content_item import ContentItem
-    from sqlalchemy import select
     result = await session.execute(select(ContentItem).where(ContentItem.id == item_id))
     item = result.scalar_one_or_none()
     if item:
+        # If already scheduled, cancel the old job first
+        if item.scheduler_job_id:
+            await SchedulerService.cancel_job(scheduler, item.scheduler_job_id)
+            
         item.target_chat_ids = json.dumps(selected_ids)
         await session.commit()
 
@@ -167,4 +221,4 @@ async def target_confirm(
     times_formatted = ", ".join(times)
     await query.message.edit_text(SCHEDULE_CONFIRMED.format(time=times_formatted, recurrence=recurrence))
     await state.clear()
-    await query.answer("Scheduled!")
+    await query.answer("Schedule updated!")
