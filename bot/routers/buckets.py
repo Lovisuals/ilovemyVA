@@ -1,5 +1,6 @@
 import uuid
 from aiogram import Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +14,17 @@ from bot.services.content_service import ContentService
 from bot.strings import BUCKET_TITLE, ITEM_VIEW
 
 router = Router()
+
+async def _safe_edit(query: CallbackQuery, text: str, reply_markup=None):
+    try:
+        await query.message.edit_text(text, reply_markup=reply_markup)
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e):
+            return
+        if "can't parse entities" in str(e):
+            await query.message.edit_text(text, reply_markup=reply_markup, parse_mode=None)
+        else:
+            raise
 
 @router.message(Command("content"))
 async def cmd_content(message: Message, bot_user: BotUser):
@@ -36,10 +48,7 @@ async def on_item_action(
             text = ITEM_VIEW.format(text=item.text or "No text", bucket=item.bucket.value)
             if item.subject:
                 text = f"📌 {item.subject}\n\n" + text
-            try:
-                await query.message.edit_text(text, reply_markup=kb)
-            except Exception:
-                pass
+            await _safe_edit(query, text, reply_markup=kb)
 
     elif action == "delete":
         if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
@@ -48,10 +57,7 @@ async def on_item_action(
         await query.answer("Item deleted.")
         await ContentService.delete_item(session, item_id)
         kb = build_bucket_list()
-        try:
-            await query.message.edit_text("📂 Content Library\n\nSelect a bucket:", reply_markup=kb)
-        except Exception:
-            pass
+        await _safe_edit(query, "📂 Content Library\n\nSelect a bucket:", reply_markup=kb)
 
     elif action == "back":
         await query.answer()
@@ -59,10 +65,7 @@ async def on_item_action(
         bucket = item.bucket if item else ContentBucket.DRAFTS
         items, total = await ContentService.get_page(session, bucket, 1, 10)
         kb = build_content_list(items, bucket, 1, max(1, (total + 9) // 10))
-        try:
-            await query.message.edit_text(BUCKET_TITLE.format(bucket=bucket.value), reply_markup=kb)
-        except Exception:
-            pass
+        await _safe_edit(query, BUCKET_TITLE.format(bucket=bucket.value), reply_markup=kb)
 
     else:
         await query.answer()

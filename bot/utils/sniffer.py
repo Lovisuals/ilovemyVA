@@ -124,15 +124,18 @@ class Sniffer:
         """Best-effort Telegram alert. Never raises."""
         try:
             msg = (
-                f"🔴 **SNIFFER CRITICAL**\n"
-                f"Source: `{payload['source']}`\n"
-                f"Event: `{payload['event']}`\n"
+                f"SNIFFER CRITICAL\n"
+                f"Source: {payload['source']}\n"
+                f"Event: {payload['event']}\n"
                 f"Time: {payload['ts']}\n"
             )
             error = payload.get("error")
             if error:
-                msg += f"Error: `{str(error)[:300]}`\n"
-            await self._bot.send_message(self._owner_id, msg)
+                # Truncate and strip potentially problematic chars for safety
+                err_str = str(error)[:500]
+                msg += f"Error: {err_str}\n"
+            
+            await self._bot.send_message(self._owner_id, msg, parse_mode=None)
         except Exception as tg_err:
             logger.warning("SNIFFER: failed to notify owner via Telegram: %s", tg_err)
 

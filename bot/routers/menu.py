@@ -30,6 +30,18 @@ _MENU_TEXT = {
     UserRole.PENDING: MENU_PENDING,
 }
 
+async def _safe_edit(query: CallbackQuery, text: str, reply_markup=None):
+    try:
+        await query.message.edit_text(text, reply_markup=reply_markup)
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e):
+            return
+        if "can't parse entities" in str(e):
+            # Fallback to plain text if parsing fails
+            await query.message.edit_text(text, reply_markup=reply_markup, parse_mode=None)
+        else:
+            raise
+
 async def _show_menu(target, bot_user: BotUser, state: FSMContext = None):
     if state:
         await state.clear()
@@ -38,10 +50,7 @@ async def _show_menu(target, bot_user: BotUser, state: FSMContext = None):
     if isinstance(target, Message):
         await target.answer(text, reply_markup=kb)
     else:
-        try:
-            await target.message.edit_text(text, reply_markup=kb)
-        except TelegramBadRequest:
-            pass
+        await _safe_edit(target, text, reply_markup=kb)
 
 @router.message(Command("menu"))
 async def cmd_menu(message: Message, bot_user: BotUser):
@@ -57,7 +66,7 @@ async def nav_content(query: CallbackQuery, bot_user: BotUser):
     await query.answer()
     if bot_user.role not in (UserRole.ADMIN, UserRole.SUPERADMIN):
         return
-    await query.message.edit_text("📂 Content Library\n\nSelect a bucket:", reply_markup=build_bucket_list())
+    await _safe_edit(query, "Content Library\n\nSelect a bucket:", reply_markup=build_bucket_list())
 
 @router.callback_query(NavData.filter(F.section == "users"))
 async def nav_users(query: CallbackQuery, bot_user: BotUser, session: AsyncSession):
@@ -66,7 +75,7 @@ async def nav_users(query: CallbackQuery, bot_user: BotUser, session: AsyncSessi
         return
     users, total = await UserService.get_page(session, 1, 10)
     kb = build_user_list(users, 1, (total + 9) // 10)
-    await query.message.edit_text("👥 Team Management", reply_markup=kb)
+    await _safe_edit(query, "Team Management", reply_markup=kb)
 
 @router.callback_query(NavData.filter(F.section == "settings"))
 async def nav_settings(query: CallbackQuery, bot_user: BotUser):
@@ -75,13 +84,12 @@ async def nav_settings(query: CallbackQuery, bot_user: BotUser):
         return
     
     kb = build_settings_panel(True, False, "Africa/Lagos")
-    await query.message.edit_text(
-        "⚙️ *SYSTEM CONFIGURATION*\n"
-        "─" * 20 + "\n"
-        "Global parameters and operational toggles.",
-        reply_markup=kb,
-        parse_mode="Markdown"
+    text = (
+        "System Configuration\n"
+        "─" * 28 + "\n"
+        "Global parameters and operational toggles."
     )
+    await _safe_edit(query, text, reply_markup=kb)
 
 @router.callback_query(NavData.filter(F.section == "admin"))
 async def nav_admin(query: CallbackQuery, bot_user: BotUser, session: AsyncSession):
@@ -93,20 +101,20 @@ async def nav_admin(query: CallbackQuery, bot_user: BotUser, session: AsyncSessi
     stats = await SystemService.get_dashboard_data(session, me.username)
     
     text = (
-        "🕹 *APEX COMMAND CENTER*\n"
-        "─" * 20 + "\n"
-        f"🌐 *DB:* `{stats['db_status']}` | 🤖 *BOT:* `@{stats['bot_username']}`\n"
-        f"📦 *VAULT:* `{stats['storage_vault']}` (`{stats['vault_status']}`)\n"
-        "─" * 20 + "\n"
-        f"📅 *QUEUED:* `{stats['scheduled']}`  | 📝 *DRAFTS:* `{stats['drafts']}`\n"
-        f"👥 *TEAM:* `{stats['users']}`      | 🏘 *CHATS:* `{stats['chats']}`\n\n"
-        "*Recent Activity:*\n"
+        "Command Centre\n"
+        "─" * 28 + "\n"
+        f"DB: {stats['db_status']} | BOT: @{stats['bot_username']}\n"
+        f"VAULT: {stats['storage_vault']} ({stats['vault_status']})\n"
+        "─" * 28 + "\n"
+        f"QUEUED: {stats['scheduled']} | DRAFTS: {stats['drafts']}\n"
+        f"TEAM: {stats['users']} | CHATS: {stats['chats']}\n\n"
+        "Recent Activity:\n"
         f"{stats['audit_trail']}\n"
-        f"🕒 _Pulse: {stats['timestamp']}_"
+        f"Pulse: {stats['timestamp']}"
     )
     
     kb = build_admin_dashboard()
-    await query.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+    await _safe_edit(query, text, reply_markup=kb)
 
 @router.callback_query(NavData.filter(F.section == "stats"))
 async def nav_stats(query: CallbackQuery, bot_user: BotUser, session: AsyncSession):
@@ -132,9 +140,9 @@ async def nav_stats(query: CallbackQuery, bot_user: BotUser, session: AsyncSessi
         users=total_users,
         persona=persona.name if persona else "None set",
     )
-    await query.message.edit_text(text, reply_markup=build_menu_row())
+    await _safe_edit(query, text, reply_markup=build_menu_row())
 
 @router.callback_query(NavData.filter(F.section == "help"))
 async def nav_help(query: CallbackQuery):
     await query.answer()
-    await query.message.edit_text(HELP_TEXT, reply_markup=build_menu_row())
+    await _safe_edit(query, HELP_TEXT, reply_markup=build_menu_row())

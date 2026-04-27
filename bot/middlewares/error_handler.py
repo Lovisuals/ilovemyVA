@@ -57,9 +57,11 @@ class ErrorHandlerMiddleware(BaseMiddleware):
             try:
                 bot = data.get("bot")
                 if bot:
+                    # Use plain text to avoid parsing errors with complex exception strings
                     await bot.send_message(
                         settings.bot.owner_id,
-                        f"🚨 **CRITICAL ERROR**\n\nUser: {user_id}\nError: {e}\n\nCheck logs for full traceback.",
+                        f"CRITICAL ERROR\n\nUser: {user_id}\nError: {str(e)[:500]}\n\nCheck logs for full traceback.",
+                        parse_mode=None
                     )
             except Exception as notify_err:
                 logger.warning("Failed to notify owner: %s", notify_err)

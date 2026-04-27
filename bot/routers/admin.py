@@ -1,5 +1,6 @@
 from typing import Any
 from aiogram import Router, F
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +16,17 @@ from bot.services.system_service import SystemService
 from bot.config import settings
 
 router = Router()
+
+async def _safe_edit(query: CallbackQuery, text: str, reply_markup=None):
+    try:
+        await query.message.edit_text(text, reply_markup=reply_markup)
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e):
+            return
+        if "can't parse entities" in str(e):
+            await query.message.edit_text(text, reply_markup=reply_markup, parse_mode=None)
+        else:
+            raise
 
 @router.message(Command("admin"))
 async def cmd_admin(message: Message, bot_user: BotUser, session: AsyncSession):
@@ -52,10 +64,7 @@ async def on_bucket_select(query: CallbackQuery, callback_data: BucketSelect, bo
     total_pages = (total + 9) // 10
 
     kb = build_bucket_panel(bucket.value, items, 1, max(1, total_pages))
-    await query.message.edit_text(
-        ADMIN_PANEL_HEADER.format(bucket=bucket.value.capitalize()),
-        reply_markup=kb
-    )
+    await _safe_edit(query, ADMIN_PANEL_HEADER.format(bucket=bucket.value.capitalize()), reply_markup=kb)
 
 @router.callback_query(BucketPage.filter())
 async def on_bucket_page(query: CallbackQuery, callback_data: BucketPage, bot_user: BotUser, session: AsyncSession):
@@ -71,10 +80,7 @@ async def on_bucket_page(query: CallbackQuery, callback_data: BucketPage, bot_us
     total_pages = (total + 9) // 10
 
     kb = build_bucket_panel(bucket.value, items, page, max(1, total_pages))
-    await query.message.edit_text(
-        ADMIN_PANEL_HEADER.format(bucket=bucket.value.capitalize()),
-        reply_markup=kb
-    )
+    await _safe_edit(query, ADMIN_PANEL_HEADER.format(bucket=bucket.value.capitalize()), reply_markup=kb)
 
 async def _render_dashboard(query: CallbackQuery, session: AsyncSession):
     me = await query.bot.get_me()
@@ -93,7 +99,7 @@ async def _render_dashboard(query: CallbackQuery, session: AsyncSession):
     )
     from bot.keyboards.admin_kb import build_admin_dashboard
     kb = build_admin_dashboard()
-    await query.message.edit_text(text, reply_markup=kb)
+    await _safe_edit(query, text, reply_markup=kb)
 
 @router.callback_query(ControlAction.filter(F.action == "health"))
 async def on_health_check(query: CallbackQuery, session: AsyncSession):
@@ -110,7 +116,7 @@ async def on_health_check(query: CallbackQuery, session: AsyncSession):
         "AI Agent: READY"
     )
     from bot.keyboards.admin_kb import build_admin_dashboard
-    await query.message.edit_text(health_report, reply_markup=build_admin_dashboard())
+    await _safe_edit(query, health_report, reply_markup=build_admin_dashboard())
 
 @router.callback_query(ControlAction.filter(F.action == "flush"))
 async def on_flush_queue(query: CallbackQuery, session: AsyncSession, scheduler: Any = None):
@@ -164,10 +170,7 @@ async def on_quick_broadcast(query: CallbackQuery, session: AsyncSession):
     items, total = await BucketService.get_page(session, bucket, 1, 10)
     total_pages = (total + 9) // 10
     kb = build_bucket_panel(bucket.value, items, 1, max(1, total_pages))
-    await query.message.edit_text(
-        ADMIN_PANEL_HEADER.format(bucket=bucket.value.capitalize()),
-        reply_markup=kb
-    )
+    await _safe_edit(query, ADMIN_PANEL_HEADER.format(bucket=bucket.value.capitalize()), reply_markup=kb)
 
 @router.callback_query(ControlAction.filter(F.action == "audit"))
 async def on_audit_log(query: CallbackQuery, session: AsyncSession):
@@ -179,4 +182,4 @@ async def on_audit_log(query: CallbackQuery, session: AsyncSession):
     text = f"System Audit Log\n\n{audit}"
     from bot.keyboards.admin_kb import build_admin_dashboard
     kb = build_admin_dashboard()
-    await query.message.edit_text(text, reply_markup=kb)
+    await _safe_edit(query, text, reply_markup=kb)
