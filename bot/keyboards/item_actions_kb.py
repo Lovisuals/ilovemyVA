@@ -13,7 +13,7 @@ def build_item_actions(item_id: str, bucket: ContentBucket) -> InlineKeyboardMar
     builder = InlineKeyboardBuilder()
     if bucket == ContentBucket.DRAFTS:
         builder.row(
-            InlineKeyboardButton(text="Post Now", callback_data=f"item_pn:{item_id}"),
+            InlineKeyboardButton(text="Post Now", callback_data=f"item_br:{item_id}"),
             InlineKeyboardButton(text="Schedule", callback_data=ItemSchedule(item_id=item_id).pack()),
         )
         builder.row(
@@ -36,10 +36,13 @@ def build_item_actions(item_id: str, bucket: ContentBucket) -> InlineKeyboardMar
         )
     elif bucket == ContentBucket.PUBLISHED:
         builder.row(
-            _btn("Post Again", item_id, "now"),
-            _btn("Schedule",   item_id, "sched"),
+            InlineKeyboardButton(text="Post Again", callback_data=f"item_br:{item_id}"),
+            InlineKeyboardButton(text="Schedule", callback_data=ItemSchedule(item_id=item_id).pack()),
         )
-        builder.row(_btn("Archive", item_id, "archive"))
+        builder.row(
+            _btn("Archive", item_id, "archive"),
+            _btn("Delete", item_id, "delete"),
+        )
     else:
         builder.row(_btn("Delete", item_id, "delete"))
     builder.row(_btn("Back to List", item_id, "back"))

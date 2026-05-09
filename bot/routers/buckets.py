@@ -83,6 +83,23 @@ async def on_item_action(
             await _safe_edit(query, text, reply_markup=kb)
         else:
             await query.answer("Item not scheduled.")
+    elif action == "archive":
+        if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
+            await query.answer()
+            return
+        item = await ContentService.get_by_id(session, item_id)
+        if item:
+            if item.scheduler_job_id and scheduler:
+                await SchedulerService.cancel_job(scheduler, item.scheduler_job_id)
+            item.bucket = ContentBucket.ARCHIVED
+            item.scheduler_job_id = None
+            await session.commit()
+            await query.answer("Item moved to Archive.")
+            kb = build_item_actions(str(item.id), item.bucket)
+            text = ITEM_VIEW.format(text=item.text or "No text", bucket=item.bucket.value)
+            if item.subject:
+                text = f" {item.subject}\n\n" + text
+            await _safe_edit(query, text, reply_markup=kb)
     elif action == "delete":
         if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
             await query.answer()
