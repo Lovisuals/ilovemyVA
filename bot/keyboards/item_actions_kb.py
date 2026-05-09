@@ -1,6 +1,6 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from bot.callbacks import ContentItemAction, ItemSchedule
+from bot.callbacks import ContentItemAction, ItemSchedule, ItemEdit
 from bot.keyboards.menu_kb import MENU_BTN
 from bot.models.content_item import ContentBucket
 def _btn(label: str, item_id: str, action: str) -> InlineKeyboardButton:
