@@ -1,8 +1,9 @@
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bot.callbacks import ContentItemAction, ItemSchedule, ItemEdit
 from bot.keyboards.menu_kb import MENU_BTN
 from bot.models.content_item import ContentBucket
+from bot.utils.url_utils import get_editor_url
 def _btn(label: str, item_id: str, action: str) -> InlineKeyboardButton:
     return InlineKeyboardButton(
         text=label,
@@ -24,7 +25,7 @@ def build_item_actions(item_id: str, bucket: ContentBucket) -> InlineKeyboardMar
             InlineKeyboardButton(text="Edit Content", callback_data=ItemEdit(item_id=item_id).pack()),
             InlineKeyboardButton(text="Change Time", callback_data=ItemSchedule(item_id=item_id).pack()),
         )
-        url = _editor_url()
+        url = get_editor_url()
         if url:
             builder.row(
                 InlineKeyboardButton(text="Edit in App", web_app=WebAppInfo(url=f"{url}?item_id={item_id}"))

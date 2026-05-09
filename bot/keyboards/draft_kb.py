@@ -5,11 +5,10 @@ from bot.callbacks import (
     DayToggle, PostAction, RetryBroadcast, SchedType, TargetToggle, TimeSlot, MultiTimeToggle
 )
 from bot.keyboards.menu_kb import MENU_BTN
-from bot.config import settings
+from bot.utils.url_utils import get_editor_url
+
 def _editor_url() -> Optional[str]:
-    if settings.bot.webhook_url:
-        return f"{settings.bot.webhook_url}/static/editor.html"
-    return None
+    return get_editor_url()
 _DAYS = [
     ("Mo", "mo"), ("Tu", "tu"), ("We", "we"), ("Th", "th"),
     ("Fr", "fr"), ("Sa", "sa"), ("Su", "su"),
