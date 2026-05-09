@@ -29,6 +29,7 @@ class ModerationEvent(Base):
     """
     __tablename__ = "moderation_events"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, index=True)
     event_type: Mapped[ModerationEventType] = mapped_column(Enum(ModerationEventType))
     actor_user_id: Mapped[int] = mapped_column(BigInteger)
     chat_id: Mapped[int] = mapped_column(BigInteger)

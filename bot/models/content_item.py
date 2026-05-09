@@ -32,6 +32,7 @@ class ContentItem(Base):
     tone_flags: Mapped[List[str]] = mapped_column(JSONB, default=list)
     disclaimer_appended: Mapped[bool] = mapped_column(Boolean, default=False)
     content_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    tenant_id: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, index=False)
     created_by: Mapped[int] = mapped_column(BigInteger, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
@@ -47,4 +48,6 @@ class ContentItem(Base):
     __table_args__ = (
         Index("ix_content_items_bucket_scheduled_at", "bucket", "scheduled_at"),
         Index("ix_content_items_created_by_created_at", "created_by", "created_at"),
+        Index("ix_content_items_tenant_bucket", "tenant_id", "bucket"),
+        Index("ix_content_items_tenant_created_at", "tenant_id", "created_at"),
     )
