@@ -383,7 +383,7 @@ async def multi_time_toggle(query: CallbackQuery, callback_data: MultiTimeToggle
                 selected_times.append(slot)
             await state.update_data(selected_times=selected_times)
             count = len(selected_times)
-            formatted = ", ".join(sorted(selected_times))
+            formatted = ", ".join(f"{t[:2]}:{t[2:]}" for t in sorted(selected_times))
             text = f"Select multiple time intervals for this broadcast:\nSelected ({count}): {formatted if formatted else 'None'}"
             try:
                 await msg.edit_text(text, reply_markup=build_multi_time_kb(selected_times))

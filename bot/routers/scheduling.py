@@ -50,7 +50,12 @@ async def on_schedule_start(
         pass
     existing_times = []
     if item.sched_time:
-        existing_times = [t.strip() for t in item.sched_time.split(",") if t.strip()]
+        for t in item.sched_time.split(","):
+            t = t.strip()
+            if t:
+                # SIDE EFFECT: Standardizes time format to HHMM for internal state. Why necessary: Matches keyboard builder logic for [x] display.
+                clean = t.replace(":", "")
+                existing_times.append(clean)
     await state.update_data(
         sch_item_id=item_id,
         sch_times=existing_times,
@@ -82,11 +87,11 @@ async def on_time_picked(query: CallbackQuery, callback_data: ScheduleTime, stat
         await state.update_data(sch_times=selected_times)
         await state.set_state(SchedulePicking.PICKING_RECURRENCE)
         kb = build_recurrence_picker(item_id)
-        times_formatted = ", ".join(selected_times)
+        times_formatted = ", ".join(f"{t[:2]}:{t[2:]}" for t in selected_times)
         await query.message.edit_text(f"Times selected: {times_formatted}. Choose recurrence:", reply_markup=kb)
         await query.answer()
         return
-    clean_time = time_str if ":" in time_str else f"{time_str[:2]}:{time_str[2:]}"
+    clean_time = time_str
     if clean_time in selected_times:
         selected_times.remove(clean_time)
     else:
@@ -97,7 +102,7 @@ async def on_time_picked(query: CallbackQuery, callback_data: ScheduleTime, stat
     count = len(selected_times)
     text = (
         "Select publication time(s) (Africa/Lagos):\n"
-        f"Selected ({count}): {', '.join(selected_times) if selected_times else 'None'}"
+        f"Selected ({count}): {', '.join(f'{t[:2]}:{t[2:]}' for t in selected_times) if selected_times else 'None'}"
     )
     try:
         await query.message.edit_text(text, reply_markup=kb)
@@ -114,7 +119,7 @@ async def on_recurrence_back(query: CallbackQuery, state: FSMContext):
     count = len(selected_times)
     text = (
         "Select publication time(s) (Africa/Lagos):\n"
-        f"Selected ({count}): {', '.join(selected_times) if selected_times else 'None'}"
+        f"Selected ({count}): {', '.join(f'{t[:2]}:{t[2:]}' for t in selected_times) if selected_times else 'None'}"
     )
     await query.message.edit_text(text, reply_markup=kb)
     await query.answer()
