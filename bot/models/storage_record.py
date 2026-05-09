@@ -21,6 +21,7 @@ class StorageRecord(Base):
     """
     __tablename__ = "storage_records"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, index=True)
     original_filename: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     file_id: Mapped[str] = mapped_column(String(256))
     file_unique_id: Mapped[str] = mapped_column(String(128), unique=True)

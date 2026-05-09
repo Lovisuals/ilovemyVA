@@ -14,7 +14,11 @@ from bot.models.content_item import ContentBucket
 from bot.services.content_service import ContentService
 from bot.services.scheduler_service import SchedulerService
 from bot.strings import BUCKET_TITLE, ITEM_VIEW
+from bot.tenant import TenantContext
+
 router = Router()
+
+
 async def _safe_edit(query: CallbackQuery, text: str, reply_markup=None):
     try:
         await query.message.edit_text(text, reply_markup=reply_markup)
@@ -25,26 +29,33 @@ async def _safe_edit(query: CallbackQuery, text: str, reply_markup=None):
             await query.message.edit_text(text, reply_markup=reply_markup, parse_mode=None)
         else:
             raise
+
+
 @router.message(Command("content"))
 async def cmd_content(message: Message, bot_user: BotUser):
     if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
         return
     await message.answer(" Content Library\n\nSelect a bucket:", reply_markup=build_bucket_list())
+
+
 @router.callback_query(ContentItemAction.filter())
 async def on_item_action(
     query: CallbackQuery,
     callback_data: ContentItemAction,
     bot_user: BotUser,
     session: AsyncSession,
-    scheduler: Any = None
+    tenant: TenantContext,
+    scheduler: Any = None,
 ):
     item_id = uuid.UUID(callback_data.item_id)
     action  = callback_data.action
+    tid     = tenant.tenant_id
+
     if action == "view":
         await query.answer()
-        item = await ContentService.get_by_id(session, item_id)
+        item = await ContentService.get_by_id(session, item_id, tenant_id=tid)
         if item:
-            kb = build_item_actions(str(item.id), item.bucket)
+            kb   = build_item_actions(str(item.id), item.bucket)
             text = ITEM_VIEW.format(text=item.text or "No text", bucket=item.bucket.value)
             if item.bucket == ContentBucket.SCHEDULED:
                 sched_info = "\n\n"
@@ -63,57 +74,62 @@ async def on_item_action(
             if item.subject:
                 text = f"{item.subject}\n\n" + text
             await _safe_edit(query, text, reply_markup=kb)
+
     elif action == "unschedule":
         if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
             await query.answer()
             return
-        item = await ContentService.get_by_id(session, item_id)
+        item = await ContentService.get_by_id(session, item_id, tenant_id=tid)
         if item and item.bucket == ContentBucket.SCHEDULED:
             if item.scheduler_job_id and scheduler:
                 await SchedulerService.cancel_job(scheduler, item.scheduler_job_id)
-            item.bucket = ContentBucket.DRAFTS
-            item.scheduler_job_id = None
-            item.scheduled_at = None
+            item.bucket            = ContentBucket.DRAFTS
+            item.scheduler_job_id  = None
+            item.scheduled_at      = None
             await session.commit()
             await query.answer("Item unscheduled and returned to drafts.")
-            kb = build_item_actions(str(item.id), item.bucket)
+            kb   = build_item_actions(str(item.id), item.bucket)
             text = ITEM_VIEW.format(text=item.text or "No text", bucket=item.bucket.value)
             if item.subject:
                 text = f" {item.subject}\n\n" + text
             await _safe_edit(query, text, reply_markup=kb)
         else:
             await query.answer("Item not scheduled.")
+
     elif action == "archive":
         if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
             await query.answer()
             return
-        item = await ContentService.get_by_id(session, item_id)
+        item = await ContentService.get_by_id(session, item_id, tenant_id=tid)
         if item:
             if item.scheduler_job_id and scheduler:
                 await SchedulerService.cancel_job(scheduler, item.scheduler_job_id)
-            item.bucket = ContentBucket.ARCHIVED
+            item.bucket           = ContentBucket.ARCHIVE
             item.scheduler_job_id = None
             await session.commit()
             await query.answer("Item moved to Archive.")
-            kb = build_item_actions(str(item.id), item.bucket)
+            kb   = build_item_actions(str(item.id), item.bucket)
             text = ITEM_VIEW.format(text=item.text or "No text", bucket=item.bucket.value)
             if item.subject:
                 text = f" {item.subject}\n\n" + text
             await _safe_edit(query, text, reply_markup=kb)
+
     elif action == "delete":
         if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
             await query.answer()
             return
         await query.answer("Item deleted.")
-        await ContentService.delete_item(session, item_id)
+        await ContentService.delete_item(session, item_id, tenant_id=tid)
         kb = build_bucket_list()
         await _safe_edit(query, " Content Library\n\nSelect a bucket:", reply_markup=kb)
+
     elif action == "back":
         await query.answer()
-        item = await ContentService.get_by_id(session, item_id)
+        item   = await ContentService.get_by_id(session, item_id, tenant_id=tid)
         bucket = item.bucket if item else ContentBucket.DRAFTS
-        items, total = await ContentService.get_page(session, bucket, 1, 10)
+        items, total = await ContentService.get_page(session, bucket, 1, 10, tenant_id=tid)
         kb = build_content_list(items, bucket, 1, max(1, (total + 9) // 10))
         await _safe_edit(query, BUCKET_TITLE.format(bucket=bucket.value), reply_markup=kb)
+
     else:
         await query.answer()

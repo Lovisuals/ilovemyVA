@@ -10,6 +10,7 @@ class AuditLog(Base):
     """
     __tablename__ = "audit_logs"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, index=True)
     event_code: Mapped[str] = mapped_column(String(64), index=True)
     actor_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     target_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)

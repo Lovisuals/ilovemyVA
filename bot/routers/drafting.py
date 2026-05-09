@@ -29,6 +29,7 @@ from bot.services.content_service import ContentService
 from bot.services.persona_service import PersonaService
 from bot.utils.debug_log import write_debug_log
 from bot.states.draft_states import DraftCreation
+from bot.tenant import TenantContext
 from bot.strings import (
     DRAFT_CUSTOM_TIME, DRAFT_CUSTOM_TIME_ERROR, DRAFT_DAY_PICK,
     DRAFT_DATETIME_ERROR, DRAFT_DATETIME_PICK, DRAFT_NO_SELECTION,
@@ -232,11 +233,12 @@ async def post_cancel(query: CallbackQuery, state: FSMContext, bot_user: BotUser
     await query.answer()
 @router.callback_query(PostAction.filter(F.action == "draft"), DraftCreation.CHOOSING_ACTION)
 async def post_save_draft(
-    query: CallbackQuery, state: FSMContext, session: AsyncSession, bot_user: BotUser, bot: Bot
+    query: CallbackQuery, state: FSMContext, session: AsyncSession, bot_user: BotUser, bot: Bot, tenant: TenantContext
 ):
     data = await state.get_data()
     await ContentService.create_item(
         session,
+        tenant_id=tenant.tenant_id,
         bucket=ContentBucket.DRAFTS,
         text=data.get("body", ""),
         subject=data.get("subject") or None,
@@ -563,7 +565,7 @@ async def target_all_none(
     await query.answer()
 @router.callback_query(TargetToggle.filter(F.action == "confirm"), DraftCreation.SELECTING_TARGETS)
 async def targets_confirm(
-    query: CallbackQuery, state: FSMContext, session: AsyncSession, bot: Bot, bot_user: BotUser
+    query: CallbackQuery, state: FSMContext, session: AsyncSession, bot: Bot, bot_user: BotUser, tenant: TenantContext
 ):
     data         = await state.get_data()
     selected_ids = data.get("selected_ids", [])
@@ -583,6 +585,7 @@ async def targets_confirm(
         final    = PersonaService.apply_to_text(raw_text, persona)
         item = await ContentService.create_item(
             session,
+            tenant_id=tenant.tenant_id,
             bucket=ContentBucket.PUBLISHED,
             text=body,
             subject=subject or None,
@@ -610,6 +613,7 @@ async def targets_confirm(
         days_label = _days_text(sched_days)
         await ContentService.create_item(
             session,
+            tenant_id=tenant.tenant_id,
             bucket=ContentBucket.SCHEDULED,
             text=body,
             subject=subject or None,
@@ -634,6 +638,7 @@ async def targets_confirm(
             sched_dt = None
         await ContentService.create_item(
             session,
+            tenant_id=tenant.tenant_id,
             bucket=ContentBucket.SCHEDULED,
             text=body,
             subject=subject or None,
@@ -741,7 +746,7 @@ async def api_get_item_handler(request: web.Request) -> web.Response:
     from database.session import async_session
     from bot.services.bucket_service import BucketService
     async with async_session() as session:
-        item = await BucketService.get_by_id(session, item_id)
+        item = await BucketService.get_by_id(session, item_id, tenant_id=settings.bot.owner_id)
         if not item:
             return web.json_response({"ok": False, "error": "Item not found"}, status=404)
         return web.json_response({
@@ -776,7 +781,7 @@ async def api_draft_handler(request: web.Request) -> web.Response:
             from bot.services.bucket_service import BucketService
             from bot.services.agent_service import AgentService
             async with async_session() as session:
-                item = await BucketService.get_by_id(session, item_id)
+                item = await BucketService.get_by_id(session, item_id, tenant_id=settings.bot.owner_id)
                 if item:
                     item.subject = subject or None
                     item.text = body

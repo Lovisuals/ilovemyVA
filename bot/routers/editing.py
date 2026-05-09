@@ -9,19 +9,24 @@ from bot.services.bucket_service import BucketService
 from bot.services.agent_service import AgentService
 from bot.keyboards.item_actions_kb import build_item_actions
 from bot.callbacks import ItemEdit
+from bot.tenant import TenantContext
+
 router = Router()
+
+
 @router.callback_query(ItemEdit.filter())
 async def on_item_edit_start(
     query: CallbackQuery,
     callback_data: ItemEdit,
     bot_user: BotUser,
     state: FSMContext,
-    session: AsyncSession
+    session: AsyncSession,
+    tenant: TenantContext,
 ):
     if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
         return
     item_id = callback_data.item_id
-    item = await BucketService.get_by_id(session, uuid.UUID(item_id))
+    item = await BucketService.get_by_id(session, uuid.UUID(item_id), tenant_id=tenant.tenant_id)
     if not item:
         await query.answer("Item not found.", show_alert=True)
         return
@@ -44,40 +49,51 @@ async def on_item_edit_start(
         ])
         await query.message.edit_text("What would you like to modify?", reply_markup=kb)
     await query.answer()
+
+
 @router.callback_query(DraftEditing.SELECTING_FIELD, F.data == "edit_text")
 async def on_edit_text_start(query: CallbackQuery, state: FSMContext):
     await state.set_state(DraftEditing.EDITING_TEXT)
     await query.message.edit_text("Please send the new text for this content item.")
     await query.answer()
+
+
 @router.message(DraftEditing.EDITING_TEXT)
-async def on_edit_text_submit(message: Message, state: FSMContext, session: AsyncSession):
-    data = await state.get_data()
+async def on_edit_text_submit(
+    message: Message, state: FSMContext, session: AsyncSession, tenant: TenantContext
+):
+    data    = await state.get_data()
     item_id = uuid.UUID(data["edit_item_id"])
-    item = await BucketService.get_by_id(session, item_id)
+    item    = await BucketService.get_by_id(session, item_id, tenant_id=tenant.tenant_id)
     if item:
-        item.text = message.text
-        tone_result = await AgentService.run_tone_check(message.text)
+        item.text       = message.text
+        tone_result     = await AgentService.run_tone_check(message.text or "")
         item.tone_score = tone_result.score
         item.tone_flags = tone_result.flags
-        # SIDE EFFECT: Commits modified content text to database. Why necessary and unavoidable: Ensures user edits are persisted for future publication or review.
         await session.commit()
         kb = build_item_actions(str(item.id), item.bucket)
         await message.answer(f" Text updated successfully for item `{item_id}`", reply_markup=kb)
     await state.clear()
+
+
 @router.callback_query(DraftEditing.SELECTING_FIELD, F.data == "edit_tags")
 async def on_edit_tags_start(query: CallbackQuery, state: FSMContext):
     await state.set_state(DraftEditing.EDITING_TAGS)
     await query.message.edit_text("Please send the new tags for this content item (comma-separated).")
     await query.answer()
+
+
 @router.message(DraftEditing.EDITING_TAGS)
-async def on_edit_tags_submit(message: Message, state: FSMContext, session: AsyncSession):
-    data = await state.get_data()
+async def on_edit_tags_submit(
+    message: Message, state: FSMContext, session: AsyncSession, tenant: TenantContext
+):
+    data    = await state.get_data()
     item_id = uuid.UUID(data["edit_item_id"])
-    item = await BucketService.get_by_id(session, item_id)
+    item    = await BucketService.get_by_id(session, item_id, tenant_id=tenant.tenant_id)
     if item:
-        tags = [t.strip() for t in message.text.split(",") if t.strip()]
+        # EDGE-015: strip whitespace, filter empty strings
+        tags      = [t.strip() for t in (message.text or "").split(",") if t.strip()]
         item.tags = tags
-        # SIDE EFFECT: Commits modified content tags to database. Why necessary and unavoidable: Ensures classification changes are persisted.
         await session.commit()
         kb = build_item_actions(str(item.id), item.bucket)
         await message.answer(f" Tags updated successfully for item `{item_id}`", reply_markup=kb)

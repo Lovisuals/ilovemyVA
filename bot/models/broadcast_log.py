@@ -19,6 +19,7 @@ class BroadcastLog(Base):
     """
     __tablename__ = "broadcast_logs"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0, index=True)
     content_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("content_items.id", ondelete="CASCADE"), index=True)
     target_chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     target_name: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
