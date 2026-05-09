@@ -28,6 +28,7 @@ from bot.middlewares.rate_limit import RateLimitMiddleware
 from bot.middlewares.logging_mw import LoggingMiddleware
 from bot.middlewares.error_handler import ErrorHandlerMiddleware
 from bot.middlewares.scheduler_mw import SchedulerMiddleware
+from bot.middlewares.tenant import TenantMiddleware
 from bot.scheduler.setup import setup_scheduler
 from bot.utils.sniffer import sniffer
 logging.basicConfig(level=logging.INFO)
@@ -244,6 +245,7 @@ def main():
     dp.update.outer_middleware(RateLimitMiddleware())
     dp.update.outer_middleware(AuthMiddleware())
     dp.update.outer_middleware(SchedulerMiddleware())
+    dp.update.outer_middleware(TenantMiddleware())
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
     app = web.Application()
