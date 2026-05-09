@@ -16,7 +16,7 @@ def build_time_picker(item_id: str, selected_times: list[str] = None) -> InlineK
     builder.row(
         InlineKeyboardButton(
             text="Confirm Selection" if selected_times else "Confirm (All Day)",
-            callback_data=ScheduleRecurrence(item_id=item_id, days="all").pack()
+            callback_data=ScheduleTime(item_id=item_id, time_str="confirm").pack()
         )
     )
     return builder.as_markup()
