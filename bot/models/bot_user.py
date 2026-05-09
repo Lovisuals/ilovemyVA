@@ -1,21 +1,16 @@
 import enum
 from datetime import datetime, timezone
 from typing import Optional
-
 from sqlalchemy import BigInteger, String, Enum, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
-
 from database.base import Base
-
 class UserRole(enum.Enum):
     SUPERADMIN = "superadmin"
     ADMIN = "admin"
     USER = "user"
     PENDING = "pending"
-
 class BotUser(Base):
     __tablename__ = "bot_users"
-
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     username: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     full_name: Mapped[str] = mapped_column(String(256))

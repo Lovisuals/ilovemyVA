@@ -2,7 +2,6 @@ from typing import List, Type, Dict, Any
 from aiogram.types import InlineKeyboardButton
 from aiogram.filters.callback_data import CallbackData
 from bot.callbacks import Noop
-
 def build_paginator_buttons(
     callback_class: Type[CallbackData],
     params: Dict[str, Any],

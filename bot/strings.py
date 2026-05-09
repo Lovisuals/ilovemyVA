@@ -8,19 +8,15 @@ WELCOME_PENDING = (
     "to one of our administrators below, or wait for your access code."
 )
 CODE_ACCEPTED = "Verification successful. You now have full access to the MedLocum platform."
-
 MENU_ADMIN = "MedLocum Content Hub\n\nManage your content pipeline, team, and broadcasts from one place."
 MENU_USER = "MedLocum Content Hub\n\nYou have full platform access."
 MENU_PENDING = "MedLocum Content Hub\n\nYour account is pending verification.\nContact an administrator to receive your access code."
-
 DRAFT_PROMPT = (
     "New Draft\n\n"
     "Send your post content now — text, formatting, and hashtags all supported.\n\n"
     "Tap Cancel to go back."
 )
-
 _SEP = "─" * 28
-
 DRAFT_STEP1 = (
     "New Post\n"
     f"{_SEP}\n"
@@ -135,7 +131,6 @@ DRAFT_REPORT_ROW_OK = "{title}"
 DRAFT_REPORT_ROW_FAIL = "{title}\n   Error: {error}"
 DRAFT_REPORT_FOOTER = "\n" + _SEP + "\nSent: {sent}  ·  Failed: {failed}"
 DRAFT_NO_SELECTION = "Select at least one target."
-
 SETTINGS_TEXT = (
     "Settings\n\n"
     "Timezone:   Africa/Lagos\n"
@@ -193,7 +188,6 @@ INVALID_ACTION = "This action could not be completed. Please refresh the interfa
 MODERATION_RESOLVED = "Moderation status updated: {res}"
 RATE_LIMITED = "Rate limit exceeded. Please wait one minute before trying again."
 AI_FEATURE_DISABLED = "AI features are not active. Add API keys to enable."
-
 PERSONA_LIST_HEADER = (
     "Personas\n\n"
     "The active persona signs every broadcast post.\n"
@@ -216,7 +210,6 @@ PERSONA_DETAIL = (
     "Signature:  {signature}\n"
     "Status:     {status}"
 )
-
 FAQ_LIST_HEADER = (
     "Auto-Reply\n\n"
     "When a group member sends a message containing a trigger phrase, "
@@ -243,7 +236,6 @@ FAQ_DETAIL = (
     "Status:     {status}\n\n"
     "Response preview:\n{response}"
 )
-
 WELCOME_NONE_SET = (
     "Welcome Message\n\n"
     "No welcome message configured yet.\n"
@@ -264,7 +256,6 @@ WELCOME_ENTER_MESSAGE = (
 WELCOME_SAVED = "Welcome message saved and active."
 WELCOME_ENABLED = "Welcome message enabled."
 WELCOME_DISABLED = "Welcome message paused."
-
 GROUP_SETTINGS_LIST = (
     "Groups & Channels\n\n"
     "Select a group or channel to configure its welcome message, "
@@ -290,7 +281,6 @@ GROUP_KW_ENTER = (
     "Send a single dash  -  to clear the list."
 )
 GROUP_KW_SAVED = "Banned word list updated ({count} term(s) active)."
-
 BROADCAST_SENT = "Sent to {count} channel(s) as {persona}."
 BROADCAST_NO_PERSONA = "Sent to {count} channel(s)."
 STATS_TEXT = (

@@ -1,12 +1,10 @@
 import secrets
 from datetime import datetime, timezone
-
 from aiogram import Router, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from bot.callbacks import OnboardGen
 from bot.config import settings
 from bot.keyboards.menu_kb import build_main_menu
@@ -20,12 +18,9 @@ from bot.strings import (
     WELCOME_SUPERADMIN, WELCOME_USER,
     MENU_ADMIN, MENU_USER,
 )
-
 router = Router()
-
 @router.message(CommandStart())
 async def cmd_start(message: Message, bot_user: BotUser, session: AsyncSession, is_new_user: bool = False):
-    
     if bot_user.role == UserRole.SUPERADMIN:
         await message.answer(WELCOME_SUPERADMIN)
         await message.answer(MENU_ADMIN, reply_markup=build_main_menu(bot_user.role))
@@ -42,7 +37,6 @@ async def cmd_start(message: Message, bot_user: BotUser, session: AsyncSession, 
             superadmins = await UserService.get_all_superadmins(session)
             kb = build_superadmin_contact_kb(superadmins)
             await message.answer(WELCOME_PENDING, reply_markup=kb)
-
         if is_new_user:
             try:
                 builder = InlineKeyboardBuilder()
@@ -61,7 +55,6 @@ async def cmd_start(message: Message, bot_user: BotUser, session: AsyncSession, 
                 )
             except Exception:
                 pass
-
 @router.message(F.text.regexp(r"^[A-Z0-9]{4}-[A-Z0-9]{4}$"))
 async def on_code_received(message: Message, bot_user: BotUser, session: AsyncSession):
     if bot_user.role != UserRole.PENDING:
@@ -81,7 +74,6 @@ async def on_code_received(message: Message, bot_user: BotUser, session: AsyncSe
     await session.commit()
     await message.answer(CODE_ACCEPTED)
     await message.answer(MENU_USER, reply_markup=build_main_menu(UserRole.USER))
-
 @router.callback_query(OnboardGen.filter())
 async def on_onboard_gen(
     query: CallbackQuery,

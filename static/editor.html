@@ -15,9 +15,7 @@
   --border: rgba(128,128,128,0.18);
   --danger: #e05353;
 }
-
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 html, body {
   height: 100%; height: 100dvh;
   background: var(--bg);
@@ -27,14 +25,11 @@ html, body {
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
-
 .app {
   display: flex;
   flex-direction: column;
   height: 100dvh;
 }
-
-/* ── Tabs ────────────────────────────────────────────────────── */
 .tabs {
   display: flex;
   background: var(--bg2);
@@ -53,8 +48,6 @@ html, body {
   user-select: none;
 }
 .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-/* ── Subject ─────────────────────────────────────────────────── */
 .subject-wrap {
   padding: 12px 16px 0;
   flex-shrink: 0;
@@ -93,8 +86,6 @@ html, body {
   flex-shrink: 0;
 }
 .subject-len.warn { color: var(--danger); }
-
-/* ── Toolbar ─────────────────────────────────────────────────── */
 .toolbar {
   display: flex;
   align-items: center;
@@ -132,8 +123,6 @@ html, body {
   margin: 0 3px;
   flex-shrink: 0;
 }
-
-/* ── Editor / Preview area ───────────────────────────────────── */
 .pane-wrap {
   flex: 1;
   position: relative;
@@ -141,7 +130,6 @@ html, body {
   display: flex;
   flex-direction: column;
 }
-
 #body-ta {
   flex: 1;
   width: 100%;
@@ -157,7 +145,6 @@ html, body {
   caret-color: var(--accent);
 }
 #body-ta::placeholder { color: var(--hint); }
-
 #preview-pane {
   display: none;
   flex: 1;
@@ -199,30 +186,6 @@ html, body {
 #preview-pane li { margin: 3px 0; }
 #preview-pane p { margin: 2px 0; }
 #preview-pane .empty-hint { color: var(--hint); font-style: italic; }
-
-/* ── Emoji panel ─────────────────────────────────────────────── */
-#emoji-panel {
-  display: none;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 10px 12px;
-  background: var(--bg2);
-  border-top: 1px solid var(--border);
-  max-height: 140px;
-  overflow-y: auto;
-  flex-shrink: 0;
-}
-#emoji-panel.show { display: flex; }
-.emoji-btn {
-  background: none; border: none;
-  font-size: 22px; cursor: pointer;
-  padding: 4px; border-radius: 6px;
-  line-height: 1;
-  transition: background .1s;
-}
-.emoji-btn:active { background: var(--border); }
-
-/* ── Stats bar ───────────────────────────────────────────────── */
 .stats-bar {
   display: flex;
   align-items: center;
@@ -246,14 +209,10 @@ html, body {
 </head>
 <body>
 <div class="app">
-
-  <!-- Tabs -->
   <div class="tabs">
-    <div class="tab active" id="tab-write"   onclick="setTab('write')">✏️ Write</div>
-    <div class="tab"        id="tab-preview" onclick="setTab('preview')">👁 Preview</div>
+    <div class="tab active" id="tab-write"   onclick="setTab('write')">Write</div>
+    <div class="tab"        id="tab-preview" onclick="setTab('preview')">Preview</div>
   </div>
-
-  <!-- Subject -->
   <div class="subject-wrap">
     <div class="subject-row">
       <span class="subject-label">Subject</span>
@@ -262,72 +221,38 @@ html, body {
       <span class="subject-len" id="subj-len"></span>
     </div>
   </div>
-
-  <!-- Toolbar -->
   <div class="toolbar" id="toolbar">
-    <button class="tbtn" onclick="fmt('bold')"     title="Bold">𝐁</button>
-    <button class="tbtn" onclick="fmt('italic')"   title="Italic"><em>I</em></button>
-    <button class="tbtn" onclick="fmt('strike')"   title="Strikethrough"><s>S</s></button>
-    <button class="tbtn" onclick="fmt('code')"     title="Inline code" style="font-family:monospace;font-size:13px">&lt;/&gt;</button>
+    <button class="tbtn" onclick="fmt('bold')"     title="Bold">B</button>
+    <button class="tbtn" onclick="fmt('italic')"   title="Italic">I</button>
+    <button class="tbtn" onclick="fmt('strike')"   title="Strike">S</button>
+    <button class="tbtn" onclick="fmt('code')"     title="Code" style="font-family:monospace;font-size:13px">&lt;/&gt;</button>
     <div class="tsep"></div>
-    <button class="tbtn" onclick="fmt('ul')"       title="Bullet list">•</button>
-    <button class="tbtn" onclick="fmt('ol')"       title="Numbered list">1.</button>
-    <button class="tbtn" onclick="fmt('divider')"  title="Divider line">──</button>
+    <button class="tbtn" onclick="fmt('ul')"       title="List">-</button>
+    <button class="tbtn" onclick="fmt('ol')"       title="Numbers">1.</button>
+    <button class="tbtn" onclick="fmt('divider')"  title="Divider">---</button>
     <div class="tsep"></div>
-    <button class="tbtn" id="emoji-toggle" onclick="toggleEmoji()" title="Emoji">😊</button>
-    <div class="tsep"></div>
-    <button class="tbtn danger" onclick="clearAll()" title="Clear all">✕</button>
+    <button class="tbtn danger" onclick="clearAll()" title="Clear">X</button>
   </div>
-
-  <!-- Pane wrapper -->
   <div class="pane-wrap">
-    <textarea id="body-ta"
-      placeholder="Write or paste your content here…&#10;&#10;Supports *bold*, _italic_, ~strike~, \`code\`, - bullets&#10;Use Ctrl+B / Ctrl+I for quick formatting."
-      spellcheck="true" autocorrect="on"></textarea>
-
+    <textarea id="body-ta" placeholder="Write content here..." spellcheck="true" autocorrect="on"></textarea>
     <div id="preview-pane"></div>
-    <div id="emoji-panel"></div>
   </div>
-
-  <!-- Stats -->
   <div class="stats-bar">
     <span id="word-stat">0 words</span>
     <span id="char-stat">0 chars</span>
-    <span class="autosave" id="autosave">✓ Saved</span>
+    <span class="autosave" id="autosave">Saved</span>
   </div>
-
 </div>
 <script>
 const tg     = window.Telegram.WebApp;
 const uid    = tg.initDataUnsafe?.user?.id || 'anon';
 const STORE  = 'mlj_draft_' + uid;
 const MAX    = 4096;
-
 tg.ready();
 tg.expand();
-
-// ── elements ──────────────────────────────────────────────────────────────────
 const subjEl  = document.getElementById('subj');
 const bodyEl  = document.getElementById('body-ta');
 const prevEl  = document.getElementById('preview-pane');
-const emojiEl = document.getElementById('emoji-panel');
-
-// ── emoji set ─────────────────────────────────────────────────────────────────
-const EMOJIS = [
-  '📢','📣','🔔','🏥','💊','🩺','👨‍⚕️','👩‍⚕️','🩻','💉','🩹','🧬',
-  '🔬','🩸','🫀','🫁','🧪','📋','📊','📈','📉','🔍','🎯','✅',
-  '❌','⚠️','ℹ️','📝','📌','💡','🔑','🗂️','📂','📁','🌐','⏰',
-  '📅','🗓️','✍️','🔴','🟡','🟢','💬','🗣️','👥','🤝','🏆','🌟',
-];
-EMOJIS.forEach(e => {
-  const b = document.createElement('button');
-  b.className = 'emoji-btn';
-  b.textContent = e;
-  b.onclick = () => insertAt(e);
-  emojiEl.appendChild(b);
-});
-
-// ── restore from localStorage ─────────────────────────────────────────────────
 try {
   const saved = JSON.parse(localStorage.getItem(STORE) || 'null');
   if (saved) {
@@ -336,8 +261,6 @@ try {
   }
 } catch (_) {}
 updateStats();
-
-// ── autosave ──────────────────────────────────────────────────────────────────
 let saveTimer;
 function scheduleSave() {
   clearTimeout(saveTimer);
@@ -351,24 +274,20 @@ function scheduleSave() {
 }
 subjEl.addEventListener('input', () => { updateSubjLen(); scheduleSave(); });
 bodyEl.addEventListener('input', () => { updateStats();   scheduleSave(); });
-
 function updateSubjLen() {
   const n  = subjEl.value.length;
   const el = document.getElementById('subj-len');
   if (n > 200) { el.textContent = `${n}/256`; el.classList.add('warn'); }
   else          { el.textContent = ''; el.classList.remove('warn'); }
 }
-
 function updateStats() {
   const t = bodyEl.value;
   const w = t.trim() ? t.trim().split(/\s+/).length : 0;
-  document.getElementById('word-stat').textContent = `${w} word${w !== 1 ? 's' : ''}`;
+  document.getElementById('word-stat').textContent = `${w} words`;
   const cc = document.getElementById('char-stat');
   cc.textContent = `${t.length}/${MAX}`;
   cc.classList.toggle('warn', t.length > MAX * 0.9);
 }
-
-// ── tabs ──────────────────────────────────────────────────────────────────────
 let activeTab = 'write';
 function setTab(t) {
   activeTab = t;
@@ -377,10 +296,8 @@ function setTab(t) {
   document.getElementById('toolbar').style.display = t === 'write' ? '' : 'none';
   bodyEl.style.display   = t === 'write' ? '' : 'none';
   prevEl.classList.toggle('show', t === 'preview');
-  if (t === 'preview') { renderPreview(); emojiEl.classList.remove('show'); }
+  if (t === 'preview') { renderPreview(); }
 }
-
-// ── preview renderer ──────────────────────────────────────────────────────────
 function esc(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
@@ -398,18 +315,13 @@ function renderPreview() {
   const subj = subjEl.value.trim();
   const raw  = bodyEl.value;
   let   html = '';
-
-  if (subj) {
-    html += `<div class="prev-subject">${esc(subj)}</div><hr>`;
-  }
+  if (subj) { html += `<div class="prev-subject">${esc(subj)}</div><hr>`; }
   if (!raw.trim()) {
-    prevEl.innerHTML = html + '<span class="empty-hint">Nothing written yet…</span>';
+    prevEl.innerHTML = html + '<span class="empty-hint">Empty...</span>';
     return;
   }
-
   const lines = raw.split('\n');
   let inCode = false, codeLines = [];
-
   for (const line of lines) {
     if (line.startsWith('```')) {
       if (!inCode) { inCode = true; codeLines = []; }
@@ -417,7 +329,6 @@ function renderPreview() {
       continue;
     }
     if (inCode) { codeLines.push(line); continue; }
-
     if (/^─{3,}$/.test(line) || /^-{3,}$/.test(line)) { html += '<hr>'; continue; }
     if (!line.trim()) { html += '<br>'; continue; }
     if (/^[-•]\s+/.test(line)) { html += `<ul><li>${inline(line.replace(/^[-•]\s+/,''))}</li></ul>`; continue; }
@@ -426,55 +337,34 @@ function renderPreview() {
   }
   prevEl.innerHTML = html;
 }
-
-// ── formatting ────────────────────────────────────────────────────────────────
 function fmt(type) {
   bodyEl.focus();
   const ss = bodyEl.selectionStart, se = bodyEl.selectionEnd;
   const sel = bodyEl.value.slice(ss, se);
   const pre = bodyEl.value.slice(0, ss);
   const aft = bodyEl.value.slice(se);
-
   let rep, cur;
   switch (type) {
     case 'bold':    rep = sel ? `*${sel}*`  : '**';   cur = sel ? rep.length : 1; break;
     case 'italic':  rep = sel ? `_${sel}_`  : '__';   cur = sel ? rep.length : 1; break;
     case 'strike':  rep = sel ? `~${sel}~`  : '~~';   cur = sel ? rep.length : 1; break;
     case 'code':    rep = sel ? `\`${sel}\`` : '``';  cur = sel ? rep.length : 1; break;
-
     case 'ul': {
       const nl = (pre === '' || pre.endsWith('\n')) ? '' : '\n';
-      if (sel) {
-        rep = sel.split('\n').map(l => `- ${l}`).join('\n');
-        cur = rep.length;
-      } else {
-        bodyEl.value = pre + nl + '- ' + aft;
-        const p = ss + nl.length + 2;
-        bodyEl.setSelectionRange(p, p);
-        scheduleSave(); updateStats(); return;
-      }
+      if (sel) { rep = sel.split('\n').map(l => `- ${l}`).join('\n'); cur = rep.length; }
+      else { bodyEl.value = pre + nl + '- ' + aft; const p = ss + nl.length + 2; bodyEl.setSelectionRange(p, p); scheduleSave(); updateStats(); return; }
       break;
     }
     case 'ol': {
       const nl = (pre === '' || pre.endsWith('\n')) ? '' : '\n';
-      if (sel) {
-        rep = sel.split('\n').map((l, i) => `${i+1}. ${l}`).join('\n');
-        cur = rep.length;
-      } else {
-        bodyEl.value = pre + nl + '1. ' + aft;
-        const p = ss + nl.length + 3;
-        bodyEl.setSelectionRange(p, p);
-        scheduleSave(); updateStats(); return;
-      }
+      if (sel) { rep = sel.split('\n').map((l, i) => `${i+1}. ${l}`).join('\n'); cur = rep.length; }
+      else { bodyEl.value = pre + nl + '1. ' + aft; const p = ss + nl.length + 3; bodyEl.setSelectionRange(p, p); scheduleSave(); updateStats(); return; }
       break;
     }
     case 'divider': {
       const nl = (pre === '' || pre.endsWith('\n')) ? '' : '\n';
       const div = nl + '\n' + '─'.repeat(28) + '\n\n';
-      bodyEl.value = pre + div + aft;
-      const p = ss + div.length;
-      bodyEl.setSelectionRange(p, p);
-      scheduleSave(); updateStats(); return;
+      bodyEl.value = pre + div + aft; const p = ss + div.length; bodyEl.setSelectionRange(p, p); scheduleSave(); updateStats(); return;
     }
     default: return;
   }
@@ -483,122 +373,67 @@ function fmt(type) {
   bodyEl.setSelectionRange(sel ? ss : p, sel ? ss + rep.length : p);
   scheduleSave(); updateStats();
 }
-
-function insertAt(text) {
-  bodyEl.focus();
-  const ss = bodyEl.selectionStart, se = bodyEl.selectionEnd;
-  bodyEl.value = bodyEl.value.slice(0, ss) + text + bodyEl.value.slice(se);
-  const p = ss + text.length;
-  bodyEl.setSelectionRange(p, p);
-  emojiEl.classList.remove('show');
-  scheduleSave(); updateStats();
-}
-
-// ── emoji toggle ──────────────────────────────────────────────────────────────
-function toggleEmoji() { emojiEl.classList.toggle('show'); }
-bodyEl.addEventListener('focus', () => emojiEl.classList.remove('show'));
-
-// ── clear ─────────────────────────────────────────────────────────────────────
 function clearAll() {
   const hasContent = bodyEl.value.trim() || subjEl.value.trim();
   if (!hasContent) return;
-  tg.showConfirm('Clear everything and start fresh?', ok => {
+  tg.showConfirm('Clear everything?', ok => {
     if (!ok) return;
     bodyEl.value = ''; subjEl.value = '';
     updateStats(); updateSubjLen();
     try { localStorage.removeItem(STORE); } catch (_) {}
   });
 }
-
-// ── paste cleanup ─────────────────────────────────────────────────────────────
 bodyEl.addEventListener('paste', () => {
   setTimeout(() => {
     bodyEl.value = bodyEl.value.replace(/\n{4,}/g, '\n\n\n');
     updateStats(); scheduleSave();
   }, 0);
 });
-
-// ── keyboard shortcuts ────────────────────────────────────────────────────────
 bodyEl.addEventListener('keydown', e => {
   if (e.ctrlKey || e.metaKey) {
     if (e.key === 'b') { e.preventDefault(); fmt('bold'); }
     if (e.key === 'i') { e.preventDefault(); fmt('italic'); }
   }
 });
-
-// ── Telegram MainButton ───────────────────────────────────────────────────────
-tg.MainButton.setText('✓  Send to Bot');
+tg.MainButton.setText('Send');
 tg.MainButton.show();
-
+tg.BackButton.show();
+tg.BackButton.onClick(() => { scheduleSave(); tg.close(); });
+const urlParams = new URLSearchParams(window.location.search);
+const itemId = urlParams.get('item_id');
+if (itemId && tg.initData) {
+    const rawApiBase = (window.__API_BASE__ ?? '').toString().trim();
+    let getUrl = `/api/item/${itemId}?initData=${encodeURIComponent(tg.initData)}`;
+    if (rawApiBase) { try { getUrl = new URL(`/api/item/${itemId}`, rawApiBase).toString() + `?initData=${encodeURIComponent(tg.initData)}`; } catch (_) { } }
+    fetch(getUrl).then(res => res.json()).then(res => { if (res.ok) { subjEl.value = res.subject || ''; bodyEl.value = res.body || ''; updateStats(); updateSubjLen(); } }).catch(err => console.error(err));
+}
 tg.MainButton.onClick(() => {
   const subj = subjEl.value.trim();
   const body = bodyEl.value.trim();
-
-  if (!body) {
-    tg.showAlert('Write some content before sending.');
-    return;
-  }
-  if (body.length > MAX) {
-    tg.showAlert(`Too long: ${body.length}/${MAX} characters. Shorten it a little.`);
-    return;
-  }
-
+  if (!body) { tg.showAlert('Empty content.'); return; }
+  if (body.length > MAX) { tg.showAlert('Too long.'); return; }
   try { localStorage.removeItem(STORE); } catch (_) {}
-  
   const payload = { subject: subj, body: body };
   const initData = tg.initData;
-  
   if (initData) {
       tg.MainButton.showProgress();
       const rawApiBase = (window.__API_BASE__ ?? '').toString().trim();
       let draftUrl = '/api/draft';
-      if (rawApiBase) {
-          try {
-              draftUrl = new URL('/api/draft', rawApiBase).toString();
-          } catch (_) {
-              draftUrl = '/api/draft';
-          }
-      }
+      if (rawApiBase) { try { draftUrl = new URL('/api/draft', rawApiBase).toString(); } catch (_) { draftUrl = '/api/draft'; } }
       fetch(draftUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-              initData: initData,
-              payload: payload
-          })
+          body: JSON.stringify({ initData: initData, payload: payload, item_id: itemId })
       })
       .then(async (res) => {
-          let bodyJson = null;
-          try {
-              bodyJson = await res.json();
-          } catch (_) {
-              throw new Error(`Draft API returned non-JSON (${res.status})`);
-          }
-          if (!res.ok) {
-              throw new Error(bodyJson?.error || `Draft API failed (${res.status})`);
-          }
+          let bodyJson = await res.json();
+          if (!res.ok) { throw new Error(bodyJson?.error || 'API failed'); }
           return bodyJson;
       })
-      .then((res) => {
-          tg.MainButton.hideProgress();
-          if (res.ok) {
-              tg.close();
-          } else {
-              tg.showAlert(res.error || 'Failed to save draft.');
-          }
-      })
-      .catch(err => {
-          tg.MainButton.hideProgress();
-          tg.showAlert('Send failed: ' + err.message + '\nURL: ' + draftUrl);
-      });
-  } else {
-      tg.sendData(JSON.stringify(payload));
-  }
+      .then((res) => { tg.MainButton.hideProgress(); if (res.ok) { tg.close(); } })
+      .catch(err => { tg.MainButton.hideProgress(); tg.showAlert(err.message); });
+  } else { tg.sendData(JSON.stringify(payload)); }
 });
-
-// ── Back button ───────────────────────────────────────────────────────────────
-tg.BackButton.show();
-tg.BackButton.onClick(() => { scheduleSave(); tg.close(); });
 </script>
 </body>
 </html>

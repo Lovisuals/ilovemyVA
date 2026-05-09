@@ -1,11 +1,9 @@
 import uuid
-
 from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from bot.callbacks import BroadcastDone, BroadcastToggle
 from bot.config import settings
 from bot.keyboards.broadcast_kb import build_target_selector
@@ -16,16 +14,13 @@ from bot.models.content_item import ContentItem
 from bot.services.connected_chat_service import ConnectedChatService
 from bot.services.persona_service import PersonaService
 from bot.strings import BROADCAST_NO_PERSONA, BROADCAST_SENT, INVALID_ACTION
-
 router = Router()
-
 async def _get_targets(session: AsyncSession) -> list:
     """Returns connected chats as target dicts, or main channel as fallback."""
     chats = await ConnectedChatService.list_active(session)
     if chats:
         return [{"name": c.title, "chat_id": c.chat_id} for c in chats]
     return [{"name": "Main Channel", "chat_id": settings.bot.main_channel_id}]
-
 @router.callback_query(F.data.startswith("item_br:"))
 async def on_broadcast_start(
     query: CallbackQuery, bot_user: BotUser, state: FSMContext, session: AsyncSession
@@ -38,9 +33,8 @@ async def on_broadcast_start(
     all_ids = [t["chat_id"] for t in targets]
     await state.update_data(br_item_id=item_id, br_targets=targets, br_selected=all_ids)
     kb = build_target_selector(item_id, targets, all_ids)
-    await query.message.edit_text("📡 Select broadcast targets:", reply_markup=kb)
+    await query.message.edit_text(" Select broadcast targets:", reply_markup=kb)
     await query.answer()
-
 @router.callback_query(BroadcastToggle.filter())
 async def on_target_toggle(
     query: CallbackQuery, callback_data: BroadcastToggle, state: FSMContext
@@ -59,7 +53,6 @@ async def on_target_toggle(
         reply_markup=build_target_selector(item_id, targets, selected)
     )
     await query.answer()
-
 @router.callback_query(BroadcastDone.filter())
 async def on_broadcast_confirm(
     query: CallbackQuery, state: FSMContext, session: AsyncSession, bot: Bot
@@ -67,33 +60,26 @@ async def on_broadcast_confirm(
     data = await state.get_data()
     item_id = uuid.UUID(data["br_item_id"])
     selected: list = data["br_selected"]
-
     if not selected:
         await query.answer("Select at least one target.", show_alert=True)
         return
-
     from sqlalchemy import select
     result = await session.execute(select(ContentItem).where(ContentItem.id == item_id))
     item = result.scalar_one_or_none()
     if not item:
         await query.answer(INVALID_ACTION, show_alert=True)
         return
-
     persona = await PersonaService.get_active(session)
     sep = "─" * 28
     header = f"{item.subject}\n{sep}\n" if item.subject else ""
     text = PersonaService.apply_to_text(header + (item.text or ""), persona)
-
     import asyncio
     sem = asyncio.Semaphore(5)
-
     async def _send_one(chat_id: int):
         async with sem:
-
             from bot.models.connected_chat import ConnectedChat
             chat_info = await session.get(ConnectedChat, chat_id)
             thread_id = chat_info.message_thread_id if chat_info else None
-
             log = BroadcastLog(
                 content_id=item_id,
                 target_chat_id=chat_id,
@@ -112,13 +98,10 @@ async def on_broadcast_confirm(
                 log.status = BroadcastStatus.FAILED
                 log.error_detail = str(exc)[:200]
                 return False
-
     sent_results = await asyncio.gather(*(_send_one(cid) for cid in selected))
     sent = sum(1 for r in sent_results if r)
-
     await session.commit()
     await state.clear()
-
     summary = (
         BROADCAST_SENT.format(count=sent, persona=persona.name)
         if persona

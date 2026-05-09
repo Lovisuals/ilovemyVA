@@ -2,7 +2,6 @@ from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from bot.config import settings
 from bot.models.bot_user import BotUser, UserRole
 from bot.services.user_service import UserService
@@ -11,35 +10,28 @@ from bot.strings import (
     YOU_WERE_PROMOTED, YOU_WERE_PROMOTED_SUPERADMIN, YOU_WERE_DEMOTED, YOU_WERE_REMOVED,
     CANNOT_DEMOTE_OWNER, ADMIN_PROMOTED_USER, ADMIN_PROMOTED_SUPERADMIN
 )
-
 router = Router()
-
 @router.message(Command("users"))
 async def cmd_users(message: Message, bot_user: BotUser, session: AsyncSession):
     if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
         return
-
     users, total = await UserService.get_page(session, 1, 10)
     kb = build_user_list(users, 1, (total + 9) // 10)
     await message.answer("User Management", reply_markup=kb)
-
 @router.callback_query(F.data.startswith("usr_p:"))
 async def on_user_page(query: CallbackQuery, bot_user: BotUser, session: AsyncSession):
     await query.answer()
     if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
         return
-
     page = int(query.data.split(":")[1])
     users, total = await UserService.get_page(session, page, 10)
     kb = build_user_list(users, page, (total + 9) // 10)
     await query.message.edit_reply_markup(reply_markup=kb)
-
 @router.callback_query(F.data.startswith("usr_a:"))
 async def on_user_action(query: CallbackQuery, bot_user: BotUser, session: AsyncSession):
     parts = query.data.split(":")
     target_id = int(parts[1])
     action = parts[2]
-
     if action == "view":
         await query.answer()
         target = await UserService.get_by_id(session, target_id)

@@ -1,14 +1,11 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
 from bot.callbacks import NavData
 from bot.models.bot_user import UserRole
-
 MENU_BTN = InlineKeyboardButton(
     text="Menu",
     callback_data=NavData(section="menu").pack(),
 )
-
 def build_main_menu(role: UserRole) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if role in (UserRole.ADMIN, UserRole.SUPERADMIN):
@@ -26,7 +23,6 @@ def build_main_menu(role: UserRole) -> InlineKeyboardMarkup:
         builder.button(text="Help & Commands", callback_data=NavData(section="help").pack())
         builder.adjust(1)
     return builder.as_markup()
-
 def build_menu_row() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(MENU_BTN)

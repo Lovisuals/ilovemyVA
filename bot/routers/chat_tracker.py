@@ -1,25 +1,18 @@
 import logging
-
 from aiogram import F, Router
 from aiogram.types import ChatMemberUpdated, Message
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from bot.services.connected_chat_service import ConnectedChatService
-
 logger = logging.getLogger(__name__)
 router = Router()
-
 _ACTIVE_STATUSES = {"member", "administrator"}
 _GONE_STATUSES   = {"left", "kicked", "restricted"}
-
 @router.my_chat_member()
 async def on_bot_membership(event: ChatMemberUpdated, session: AsyncSession) -> None:
     status = event.new_chat_member.status
     chat   = event.chat
-
     if chat.type not in ("group", "supergroup", "channel"):
         return
-
     try:
         if status in _ACTIVE_STATUSES:
             await ConnectedChatService.upsert(
@@ -36,7 +29,6 @@ async def on_bot_membership(event: ChatMemberUpdated, session: AsyncSession) -> 
             logger.info("Bot left/kicked from %s (%s)", chat.title, chat.id)
     except Exception as exc:
         logger.warning("chat_tracker error for %s: %s", chat.id, exc)
-
 @router.channel_post(F.text)
 @router.message(F.text, F.chat.type.in_({"group", "supergroup"}))
 async def on_chat_activity(message: Message, session: AsyncSession) -> None:

@@ -5,9 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bot.models.moderation_event import ModerationEvent, ModerationResolution, ModerationEventType
 from bot.callbacks import ModerationResolve
 from bot.strings import MODERATION_RESOLVED, INVALID_ACTION
-
 router = Router()
-
 @router.callback_query(ModerationResolve.filter())
 async def on_moderation_resolve(
     query: CallbackQuery,
@@ -24,7 +22,6 @@ async def on_moderation_resolve(
     event.resolved_by = query.from_user.id
     event.resolution = ModerationResolution(callback_data.resolution)
     await session.commit()
-    
     enforcement_msg = ""
     if event.resolution == ModerationResolution.APPROVED:
         try:
@@ -38,14 +35,13 @@ async def on_moderation_resolve(
             elif event.event_type == ModerationEventType.MUTE:
                 from aiogram.types import ChatPermissions
                 await query.bot.restrict_chat_member(
-                    event.chat_id, 
-                    event.actor_user_id, 
+                    event.chat_id,
+                    event.actor_user_id,
                     permissions=ChatPermissions(can_send_messages=False)
                 )
                 enforcement_msg = " (User Muted)"
         except Exception as e:
             enforcement_msg = f" (Enforcement failed: {str(e)})"
-
     await query.message.edit_text(
         MODERATION_RESOLVED.format(res=event.resolution.value) + enforcement_msg
     )

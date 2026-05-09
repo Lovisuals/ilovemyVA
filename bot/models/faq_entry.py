@@ -1,14 +1,10 @@
 import uuid
 from datetime import datetime, timezone
-
 from sqlalchemy import BigInteger, Boolean, DateTime, String, Text, UUID
 from sqlalchemy.orm import Mapped, mapped_column
-
 from database.base import Base
-
 class FaqEntry(Base):
     __tablename__ = "faq_entries"
-
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     trigger: Mapped[str] = mapped_column(String(256), nullable=False)
     response: Mapped[str] = mapped_column(Text, nullable=False)

@@ -1,21 +1,16 @@
 from typing import List
-
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
 from bot.callbacks import OnboardGen, UserAction, UserPage
 from bot.keyboards.menu_kb import MENU_BTN
 from bot.keyboards.pagination_kb import build_paginator_buttons
 from bot.models.bot_user import BotUser, UserRole
-
 _ROLE_ICON = {
-    UserRole.SUPERADMIN: "👑",
-    UserRole.ADMIN: "🛡",
-    UserRole.USER: "👤",
-    UserRole.PENDING: "🕒",
+    UserRole.SUPERADMIN: "",
+    UserRole.ADMIN: "",
+    UserRole.USER: "",
+    UserRole.PENDING: "",
 }
-
-
 def build_user_list(users: List[BotUser], page: int, total_pages: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for user in users:
@@ -32,8 +27,6 @@ def build_user_list(users: List[BotUser], page: int, total_pages: int) -> Inline
         builder.row(*paginator)
     builder.row(MENU_BTN)
     return builder.as_markup()
-
-
 def build_user_actions(
     user_id: int,
     current_role: UserRole,
@@ -41,7 +34,6 @@ def build_user_actions(
     target_is_owner: bool = False,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-
     if current_role == UserRole.PENDING:
         builder.button(
             text="Generate Code",
@@ -68,21 +60,17 @@ def build_user_actions(
                 text="Demote to Admin",
                 callback_data=UserAction(user_id=user_id, action="demote_admin").pack(),
             )
-
     if not target_is_owner:
         builder.button(
             text="Remove Access",
             callback_data=UserAction(user_id=user_id, action="remove").pack(),
         )
-
     builder.adjust(1)
     builder.row(
         InlineKeyboardButton(text="Back", callback_data=UserPage(page=1).pack()),
         MENU_BTN,
     )
     return builder.as_markup()
-
-
 def build_superadmin_contact_kb(superadmins: List[BotUser]) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for sa in superadmins:

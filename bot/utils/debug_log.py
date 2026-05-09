@@ -1,20 +1,14 @@
 """
 DEPRECATED — Compatibility shim.
 =================================
-
 All callers should migrate to ``bot.utils.sniffer.sniffer``.
-
 This file is kept only so that any stale import of ``write_debug_log`` does
 not crash the process.  It silently redirects into the production sniffer.
 """
-
 import asyncio
 import logging
 from typing import Any
-
 logger = logging.getLogger(__name__)
-
-
 def write_debug_log(
     *, run_id: str, hypothesis_id: str, location: str, message: str, data: dict[str, Any]
 ) -> None:
@@ -23,7 +17,6 @@ def write_debug_log(
     """
     try:
         from bot.utils.sniffer import sniffer
-
         loop = asyncio.get_event_loop()
         if loop.is_running():
             asyncio.ensure_future(sniffer.capture(

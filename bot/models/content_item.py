@@ -6,20 +6,16 @@ from sqlalchemy import String, Text, Boolean, Float, BigInteger, DateTime, Enum,
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from database.base import Base
-
 class ContentBucket(enum.Enum):
     DRAFTS = "drafts"
     SCHEDULED = "scheduled"
     PUBLISHED = "published"
     ARCHIVE = "archive"
-
 class ParseMode(enum.Enum):
     HTML = "HTML"
     MARKDOWN_V2 = "MarkdownV2"
-
 class ContentItem(Base):
     __tablename__ = "content_items"
-
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     bucket: Mapped[ContentBucket] = mapped_column(Enum(ContentBucket), nullable=False, index=True)
     text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -43,13 +39,11 @@ class ContentItem(Base):
     archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     tags: Mapped[List[str]] = mapped_column(JSONB, default=list)
     content_metadata: Mapped[Dict[str, Any]] = mapped_column(JSONB, default=dict)
- 
     subject: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
     sched_days: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     sched_time: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     post_type: Mapped[Optional[str]] = mapped_column(String(12), nullable=True, default="draft")
     target_chat_ids: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-
     __table_args__ = (
         Index("ix_content_items_bucket_scheduled_at", "bucket", "scheduled_at"),
         Index("ix_content_items_created_by_created_at", "created_by", "created_at"),

@@ -1,14 +1,10 @@
 from datetime import datetime, timezone
 from typing import List, Optional
-
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from bot.models.connected_chat import ConnectedChat
-
 class ConnectedChatService:
-
     @staticmethod
     async def upsert(
         session: AsyncSession,
@@ -45,7 +41,6 @@ class ConnectedChatService:
             select(ConnectedChat).where(ConnectedChat.chat_id == chat_id)
         )
         return result.scalar_one()
-
     @staticmethod
     async def mark_left(session: AsyncSession, chat_id: int) -> None:
         await session.execute(
@@ -54,7 +49,6 @@ class ConnectedChatService:
             .values(bot_status="left", is_broadcast_target=False)
         )
         await session.commit()
-
     @staticmethod
     async def list_active(session: AsyncSession) -> List[ConnectedChat]:
         result = await session.execute(
@@ -63,7 +57,6 @@ class ConnectedChatService:
             .order_by(ConnectedChat.title)
         )
         return list(result.scalars().all())
-
     @staticmethod
     async def toggle_target(session: AsyncSession, chat_id: int) -> bool:
         result = await session.execute(
@@ -75,13 +68,11 @@ class ConnectedChatService:
         chat.is_broadcast_target = not chat.is_broadcast_target
         await session.commit()
         return chat.is_broadcast_target
-
     @staticmethod
     async def touch(session: AsyncSession, chat_id: int, thread_id: Optional[int] = None) -> None:
         values = {"last_active_at": datetime.now(timezone.utc)}
         if thread_id:
             values["message_thread_id"] = thread_id
-            
         await session.execute(
             update(ConnectedChat)
             .where(ConnectedChat.chat_id == chat_id)

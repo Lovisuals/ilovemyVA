@@ -3,9 +3,7 @@ import logging
 from aiogram import BaseMiddleware
 from aiogram.types import Update
 from database.session import async_session
-
 logger = logging.getLogger(__name__)
-
 class DbSessionMiddleware(BaseMiddleware):
     async def __call__(
         self,

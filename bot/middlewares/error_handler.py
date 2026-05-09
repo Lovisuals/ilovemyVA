@@ -2,17 +2,13 @@ import asyncio
 import logging
 import traceback
 from typing import Any, Awaitable, Callable, Dict
-
 from aiogram import BaseMiddleware
 from aiogram.types import Update
-
 from bot.config import settings
 from bot.models.audit_log import AuditLog
 from database.session import async_session
 from bot.utils.sniffer import sniffer
-
 logger = logging.getLogger(__name__)
-
 class ErrorHandlerMiddleware(BaseMiddleware):
     async def __call__(
         self,
@@ -25,8 +21,6 @@ class ErrorHandlerMiddleware(BaseMiddleware):
         except Exception as e:
             error_trace = traceback.format_exc()
             logger.error("Unhandled exception: %s\n%s", e, error_trace)
-
-            # Fire sniffer — writes to audit_log + Telegram alert for CRITICAL
             asyncio.ensure_future(sniffer.capture(
                 source="ErrorHandlerMiddleware",
                 event="unhandled_exception",
@@ -34,13 +28,11 @@ class ErrorHandlerMiddleware(BaseMiddleware):
                 error=str(e),
                 traceback=error_trace,
             ))
-
             user_id = None
             if event.message and event.message.from_user:
                 user_id = event.message.from_user.id
             elif event.callback_query and event.callback_query.from_user:
                 user_id = event.callback_query.from_user.id
-
             try:
                 async with async_session() as session:
                     audit = AuditLog(
@@ -53,11 +45,9 @@ class ErrorHandlerMiddleware(BaseMiddleware):
                     await session.commit()
             except Exception as audit_err:
                 logger.warning("Failed to write audit log: %s", audit_err)
-
             try:
                 bot = data.get("bot")
                 if bot:
-                    # Use plain text to avoid parsing errors with complex exception strings
                     await bot.send_message(
                         settings.bot.owner_id,
                         f"CRITICAL ERROR\n\nUser: {user_id}\nError: {str(e)[:500]}\n\nCheck logs for full traceback.",
@@ -65,5 +55,4 @@ class ErrorHandlerMiddleware(BaseMiddleware):
                     )
             except Exception as notify_err:
                 logger.warning("Failed to notify owner: %s", notify_err)
-
             return

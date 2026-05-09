@@ -8,7 +8,6 @@ from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from bot.models.bot_user import BotUser, UserRole
 from bot.models.content_item import ContentItem, ContentBucket
 from bot.states.schedule_states import SchedulePicking
@@ -18,9 +17,7 @@ from bot.keyboards.schedule_kb import build_time_picker, build_recurrence_picker
 from bot.keyboards.draft_kb import build_target_kb
 from bot.strings import SCHEDULE_CONFIRMED, INVALID_ACTION, DRAFT_TARGETS, DRAFT_NO_SELECTION
 from bot.callbacks import ItemSchedule, ScheduleTime, ScheduleRecurrence, TargetToggle
-
 router = Router()
-
 async def _get_chats(session: AsyncSession) -> list:
     chats = await ConnectedChatService.list_active(session)
     if not chats:
@@ -32,7 +29,6 @@ async def _get_chats(session: AsyncSession) -> list:
         dummy.chat_type = "channel"
         return [dummy]
     return chats
-
 @router.callback_query(ItemSchedule.filter())
 async def on_schedule_start(
     query: CallbackQuery,
@@ -43,47 +39,29 @@ async def on_schedule_start(
 ):
     if bot_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
         return
-
     item_id = callback_data.item_id
     item_uuid = uuid.UUID(item_id)
-    
     result = await session.execute(select(ContentItem).where(ContentItem.id == item_uuid))
     item = result.scalar_one_or_none()
-    
     if not item:
         await query.answer("Item not found.", show_alert=True)
         return
-
-    # Check if this was an "Unschedule" request? 
-    # Actually, let's check if the query text or some state indicates unscheduling.
-    # In item_actions_kb, I kept f"item_sc:{item_id}" for Unschedule.
-    # But ItemSchedule.filter() matches it.
-    
-    # If the user clicked "❌ Unschedule", we should just unschedule it and go back to drafts.
     if query.data.startswith("item_sc:") and not isinstance(query.data, ItemSchedule):
-        # This is a bit tricky with CallbackData. 
-        # Let's check the button text or just assume if it's already scheduled and we aren't in a state?
         pass
-
-    # Pre-populate from existing schedule if any
     existing_times = []
     if item.sched_time:
         existing_times = [t.strip() for t in item.sched_time.split(",") if t.strip()]
-    
     await state.update_data(
         sch_item_id=item_id,
         sch_times=existing_times,
         sch_recurrence=item.recurrence or "once"
     )
-    
     if item.target_chat_ids:
         try:
             await state.update_data(selected_ids=json.loads(item.target_chat_ids))
         except Exception:
             pass
-
     await state.set_state(SchedulePicking.PICKING_TIME)
-
     kb = build_time_picker(item_id, existing_times)
     await query.message.edit_text(
         "Select publication time(s) (Africa/Lagos):\n"
@@ -91,42 +69,33 @@ async def on_schedule_start(
         reply_markup=kb
     )
     await query.answer()
-
 @router.callback_query(SchedulePicking.PICKING_TIME, ScheduleTime.filter())
 async def on_time_picked(query: CallbackQuery, callback_data: ScheduleTime, state: FSMContext):
     item_id = callback_data.item_id
     time_str = callback_data.time_str
-
     data = await state.get_data()
     selected_times = data.get("sch_times", [])
-
     if time_str == "confirm":
         if not selected_times:
             await query.answer("Please select at least one time.", show_alert=True)
             return
-        
         await state.update_data(sch_times=selected_times)
         await state.set_state(SchedulePicking.PICKING_RECURRENCE)
-
         kb = build_recurrence_picker(item_id)
         times_formatted = ", ".join(selected_times)
         await query.message.edit_text(f"Times selected: {times_formatted}. Choose recurrence:", reply_markup=kb)
         await query.answer()
         return
-
     clean_time = time_str if ":" in time_str else f"{time_str[:2]}:{time_str[2:]}"
     if clean_time in selected_times:
         selected_times.remove(clean_time)
     else:
         selected_times.append(clean_time)
         selected_times.sort()
-        
     await state.update_data(sch_times=selected_times)
-    
     kb = build_time_picker(item_id, selected_times)
     await query.message.edit_reply_markup(reply_markup=kb)
     await query.answer()
-
 @router.callback_query(SchedulePicking.PICKING_RECURRENCE, ScheduleRecurrence.filter())
 async def on_recurrence_picked(
     query: CallbackQuery,
@@ -136,29 +105,24 @@ async def on_recurrence_picked(
 ):
     recurrence = callback_data.recurrence
     await state.update_data(sch_recurrence=recurrence)
-    
     data = await state.get_data()
     selected_ids = data.get("selected_ids")
-    
     if not selected_ids:
         chats = await _get_chats(session)
         selected_ids = [c.chat_id for c in chats]
         await state.update_data(selected_ids=selected_ids)
     else:
         chats = await _get_chats(session)
-    
     await state.set_state(SchedulePicking.SELECTING_TARGETS)
     times_formatted = ", ".join(data.get("sch_times", []))
-    
     await query.message.edit_text(
         DRAFT_TARGETS.format(
             subject="Scheduling Content",
-            schedule_line=f"🔄 {recurrence.capitalize()} at {times_formatted}"
+            schedule_line=f"{recurrence.capitalize()} at {times_formatted}"
         ),
-        reply_markup=build_target_kb(chats, selected_ids, confirm_label="✅ Update Schedule")
+        reply_markup=build_target_kb(chats, selected_ids, confirm_label="Update Schedule")
     )
     await query.answer()
-
 @router.callback_query(SchedulePicking.SELECTING_TARGETS, TargetToggle.filter(F.action == "chat"))
 async def target_toggle(query: CallbackQuery, callback_data: TargetToggle, state: FSMContext, session: AsyncSession):
     data = await state.get_data()
@@ -169,22 +133,20 @@ async def target_toggle(query: CallbackQuery, callback_data: TargetToggle, state
     await state.update_data(selected_ids=selected)
     chats = await _get_chats(session)
     try:
-        await query.message.edit_reply_markup(reply_markup=build_target_kb(chats, selected, confirm_label="✅ Update Schedule"))
+        await query.message.edit_reply_markup(reply_markup=build_target_kb(chats, selected, confirm_label=" Update Schedule"))
     except Exception:
         pass
     await query.answer()
-
 @router.callback_query(SchedulePicking.SELECTING_TARGETS, TargetToggle.filter(F.action.in_({"all", "none"})))
 async def target_all_none(query: CallbackQuery, callback_data: TargetToggle, state: FSMContext, session: AsyncSession):
     chats = await _get_chats(session)
     selected = [c.chat_id for c in chats] if callback_data.action == "all" else []
     await state.update_data(selected_ids=selected)
     try:
-        await query.message.edit_reply_markup(reply_markup=build_target_kb(chats, selected, confirm_label="✅ Update Schedule"))
+        await query.message.edit_reply_markup(reply_markup=build_target_kb(chats, selected, confirm_label=" Update Schedule"))
     except Exception:
         pass
     await query.answer()
-
 @router.callback_query(SchedulePicking.SELECTING_TARGETS, TargetToggle.filter(F.action == "confirm"))
 async def target_confirm(
     query: CallbackQuery,
@@ -197,27 +159,20 @@ async def target_confirm(
     if not selected_ids:
         await query.answer(DRAFT_NO_SELECTION, show_alert=True)
         return
-
     item_id = uuid.UUID(data["sch_item_id"])
     times = data["sch_times"]
     recurrence = data["sch_recurrence"]
-
     if not scheduler:
         await query.answer("Scheduler not available.")
         return
-
     result = await session.execute(select(ContentItem).where(ContentItem.id == item_id))
     item = result.scalar_one_or_none()
     if item:
-        # If already scheduled, cancel the old job first
         if item.scheduler_job_id:
             await SchedulerService.cancel_job(scheduler, item.scheduler_job_id)
-            
         item.target_chat_ids = json.dumps(selected_ids)
         await session.commit()
-
     await SchedulerService.register_job(session, scheduler, item_id, times, recurrence)
-    
     times_formatted = ", ".join(times)
     await query.message.edit_text(SCHEDULE_CONFIRMED.format(time=times_formatted, recurrence=recurrence))
     await state.clear()
