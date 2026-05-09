@@ -60,8 +60,8 @@ async def _edit(bot: Bot, chat_id: int, msg_id: int, text: str, markup) -> None:
         await bot.edit_message_text(
             chat_id=chat_id, message_id=msg_id, text=text, reply_markup=markup
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"Failed to edit message {msg_id} in chat {chat_id}: {e}")
 async def _safe_delete(msg: Message) -> None:
     try:
         await msg.delete()
@@ -359,9 +359,15 @@ async def time_selected(query: CallbackQuery, callback_data: TimeSlot, state: FS
                 DRAFT_DAY_PICK.format(subject=data.get("subject", ""), time_text=human),
                 build_day_kb(list(_ALL_DAYS)))
     await query.answer()
-@router.callback_query(MultiTimeToggle.filter(), DraftCreation.CHOOSING_MULTIPLE_TIMES)
+@router.callback_query(MultiTimeToggle.filter())
 async def multi_time_toggle(query: CallbackQuery, callback_data: MultiTimeToggle, state: FSMContext, bot: Bot):
+    current_state = await state.get_state()
+    logger.info(f"multi_time_toggle | State: {current_state} | Data: {callback_data}")
+    if current_state != DraftCreation.CHOOSING_MULTIPLE_TIMES.state and current_state != DraftCreation.CHOOSING_TIME.state:
+        # SIDE EFFECT: Allowing transition if state was lost but context exists.
+        pass
     try:
+        logger.info(f"multi_time_toggle called: {callback_data} | state: {await state.get_state()}")
         action = callback_data.action
         data = await state.get_data()
         msg = query.message
@@ -370,8 +376,9 @@ async def multi_time_toggle(query: CallbackQuery, callback_data: MultiTimeToggle
             return
         if action == "back":
             await state.set_state(DraftCreation.CHOOSING_TIME)
+            subject = data.get("subject", "").replace("{", "(").replace("}", ")")
             await _edit(bot, msg.chat.id, msg.message_id,
-                        DRAFT_TIME_PICK.format(subject=data.get("subject", "")), build_time_kb())
+                        DRAFT_TIME_PICK.format(subject=subject), build_time_kb())
             await query.answer()
             return
         selected_times = list(data.get("selected_times", []))
@@ -385,10 +392,7 @@ async def multi_time_toggle(query: CallbackQuery, callback_data: MultiTimeToggle
             count = len(selected_times)
             formatted = ", ".join(f"{t[:2]}:{t[2:]}" for t in sorted(selected_times))
             text = f"Select multiple time intervals for this broadcast:\nSelected ({count}): {formatted if formatted else 'None'}"
-            try:
-                await msg.edit_text(text, reply_markup=build_multi_time_kb(selected_times))
-            except TelegramBadRequest:
-                pass
+            await _edit(bot, msg.chat.id, msg.message_id, text, build_multi_time_kb(selected_times))
             await query.answer()
             return
         if action == "confirm":
@@ -407,8 +411,9 @@ async def multi_time_toggle(query: CallbackQuery, callback_data: MultiTimeToggle
             time_text = ", ".join(formatted_times)
             if len(time_text) > 40:
                 time_text = time_text[:37] + "..."
+            subject = data.get("subject", "").replace("{", "(").replace("}", ")")
             await _edit(bot, msg.chat.id, msg.message_id,
-                        DRAFT_DAY_PICK.format(subject=data.get("subject", ""), time_text=time_text),
+                        DRAFT_DAY_PICK.format(subject=subject, time_text=time_text),
                         build_day_kb(list(_ALL_DAYS)))
             await query.answer()
     except Exception as exc:
@@ -485,9 +490,10 @@ async def day_toggle(query: CallbackQuery, callback_data: DayToggle, state: FSMC
     await state.update_data(selected_days=selected)
     time_text = data.get("sched_time", "always")
     count = len(selected)
+    subject = data.get("subject", "").replace("{", "(").replace("}", ")")
     try:
         await query.message.edit_text(
-            DRAFT_DAY_PICK.format(subject=data.get("subject", ""), time_text=time_text) + f"\nSelected ({count}d): " + _days_text(selected),
+            DRAFT_DAY_PICK.format(subject=subject, time_text=time_text) + f"\nSelected ({count}d): " + _days_text(selected),
             reply_markup=build_day_kb(selected),
         )
     except TelegramBadRequest:
@@ -496,20 +502,22 @@ async def day_toggle(query: CallbackQuery, callback_data: DayToggle, state: FSMC
 @router.callback_query(TargetToggle.filter(F.action == "back"), DraftCreation.SELECTING_TARGETS)
 async def targets_back(query: CallbackQuery, state: FSMContext, bot: Bot):
     data    = await state.get_data()
-    subject = data.get("subject", "")
     back_to = data.get("back_to", "action")
     if back_to == "days":
         selected_days = data.get("selected_days", list(_ALL_DAYS))
+        subject = data.get("subject", "").replace("{", "(").replace("}", ")")
         await state.set_state(DraftCreation.CHOOSING_DAYS)
         await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
                     DRAFT_DAY_PICK.format(subject=subject,
                                          time_text=data.get("sched_time", "always")),
                     build_day_kb(selected_days))
     elif back_to == "datetime":
+        subject = data.get("subject", "").replace("{", "(").replace("}", ")")
         await state.set_state(DraftCreation.ENTERING_DATETIME)
         await _edit(bot, data["draft_chat_id"], data["draft_msg_id"],
                     DRAFT_DATETIME_PICK.format(subject=subject), build_datetime_kb())
     else:
+        subject = data.get("subject", "").replace("{", "(").replace("}", ")")
         body        = data.get("body", "")
         preview_body = body[:600] + ("…" if len(body) > 600 else "")
         await state.set_state(DraftCreation.CHOOSING_ACTION)
