@@ -12,13 +12,11 @@ def build_time_picker(item_id: str, selected_times: list[str] = None) -> InlineK
             text = f"[x] {display_str}" if time_str in selected_times else display_str
             builder.button(text=text, callback_data=ScheduleTime(item_id=item_id, time_str=time_str).pack())
     builder.adjust(6)
+    count = len(selected_times)
+    confirm_text = f"Confirm Selection ({count})" if count > 0 else "Confirm (All Day)"
     from aiogram.types import InlineKeyboardButton
-    builder.row(
-        InlineKeyboardButton(
-            text="Confirm Selection" if selected_times else "Confirm (All Day)",
-            callback_data=ScheduleTime(item_id=item_id, time_str="confirm").pack()
-        )
-    )
+    builder.row(InlineKeyboardButton(text=confirm_text, callback_data=ScheduleTime(item_id=item_id, time_str="confirm").pack()))
+    builder.row(InlineKeyboardButton(text="Back", callback_data=f"item_vw:{item_id}"))
     return builder.as_markup()
 def build_recurrence_picker(item_id: str) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -26,4 +24,6 @@ def build_recurrence_picker(item_id: str) -> InlineKeyboardMarkup:
     for text, val in options:
         builder.button(text=text, callback_data=ScheduleRecurrence(item_id=item_id, recurrence=val).pack())
     builder.adjust(1)
+    from aiogram.types import InlineKeyboardButton
+    builder.row(InlineKeyboardButton(text="Back", callback_data=ScheduleTime(item_id=item_id, time_str="back").pack()))
     return builder.as_markup()

@@ -94,7 +94,29 @@ async def on_time_picked(query: CallbackQuery, callback_data: ScheduleTime, stat
         selected_times.sort()
     await state.update_data(sch_times=selected_times)
     kb = build_time_picker(item_id, selected_times)
-    await query.message.edit_reply_markup(reply_markup=kb)
+    count = len(selected_times)
+    text = (
+        "Select publication time(s) (Africa/Lagos):\n"
+        f"Selected ({count}): {', '.join(selected_times) if selected_times else 'None'}"
+    )
+    try:
+        await query.message.edit_text(text, reply_markup=kb)
+    except Exception:
+        pass
+    await query.answer()
+@router.callback_query(SchedulePicking.PICKING_RECURRENCE, ScheduleTime.filter(F.time_str == "back"))
+async def on_recurrence_back(query: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    item_id = data.get("sch_item_id")
+    selected_times = data.get("sch_times", [])
+    await state.set_state(SchedulePicking.PICKING_TIME)
+    kb = build_time_picker(item_id, selected_times)
+    count = len(selected_times)
+    text = (
+        "Select publication time(s) (Africa/Lagos):\n"
+        f"Selected ({count}): {', '.join(selected_times) if selected_times else 'None'}"
+    )
+    await query.message.edit_text(text, reply_markup=kb)
     await query.answer()
 @router.callback_query(SchedulePicking.PICKING_RECURRENCE, ScheduleRecurrence.filter())
 async def on_recurrence_picked(
@@ -146,6 +168,16 @@ async def target_all_none(query: CallbackQuery, callback_data: TargetToggle, sta
         await query.message.edit_reply_markup(reply_markup=build_target_kb(chats, selected, confirm_label=" Update Schedule"))
     except Exception:
         pass
+    await query.answer()
+@router.callback_query(SchedulePicking.SELECTING_TARGETS, TargetToggle.filter(F.action == "back"))
+async def on_targets_back(query: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    item_id = data.get("sch_item_id")
+    selected_times = data.get("sch_times", [])
+    await state.set_state(SchedulePicking.PICKING_RECURRENCE)
+    kb = build_recurrence_picker(item_id)
+    times_formatted = ", ".join(selected_times)
+    await query.message.edit_text(f"Times selected: {times_formatted}. Choose recurrence:", reply_markup=kb)
     await query.answer()
 @router.callback_query(SchedulePicking.SELECTING_TARGETS, TargetToggle.filter(F.action == "confirm"))
 async def target_confirm(

@@ -382,8 +382,11 @@ async def multi_time_toggle(query: CallbackQuery, callback_data: MultiTimeToggle
             else:
                 selected_times.append(slot)
             await state.update_data(selected_times=selected_times)
+            count = len(selected_times)
+            formatted = ", ".join(sorted(selected_times))
+            text = f"Select multiple time intervals for this broadcast:\nSelected ({count}): {formatted if formatted else 'None'}"
             try:
-                await msg.edit_reply_markup(reply_markup=build_multi_time_kb(selected_times))
+                await msg.edit_text(text, reply_markup=build_multi_time_kb(selected_times))
             except TelegramBadRequest:
                 pass
             await query.answer()
@@ -481,9 +484,10 @@ async def day_toggle(query: CallbackQuery, callback_data: DayToggle, state: FSMC
         return
     await state.update_data(selected_days=selected)
     time_text = data.get("sched_time", "always")
+    count = len(selected)
     try:
         await query.message.edit_text(
-            DRAFT_DAY_PICK.format(subject=data.get("subject", ""), time_text=time_text),
+            DRAFT_DAY_PICK.format(subject=data.get("subject", ""), time_text=time_text) + f"\nSelected ({count}d): " + _days_text(selected),
             reply_markup=build_day_kb(selected),
         )
     except TelegramBadRequest:
